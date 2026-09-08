@@ -88,3 +88,31 @@ def test_git_env_askpass_prints_token_without_argv(tmp_path: Path):
     assert user.strip() == "x-access-token"
     assert pw.strip() == TOKEN
     assert TOKEN not in helper.read_text()
+
+
+def _alerts_body(nodes):
+    return {"data": {"repository": {"vulnerabilityAlerts": {
+        "pageInfo": {"hasNextPage": False, "endCursor": None}, "nodes": nodes}}}}
+
+
+def _good_node():
+    return {"createdAt": "2026-09-01T00:00:00Z", "vulnerableManifestPath": "package.json",
+            "securityVulnerability": {"severity": "HIGH", "vulnerableVersionRange": "< 4.6.2",
+                                      "firstPatchedVersion": {"identifier": "4.6.2"},
+                                      "package": {"name": "hono", "ecosystem": "NPM"},
+                                      "advisory": {"ghsaId": "GHSA-1", "summary": "S", "description": "D",
+                                                   "permalink": "https://github.com/advisories/GHSA-1"}}}
+
+
+def test_open_alerts_null_connection_is_empty(tmp_path: Path):
+    body = {"data": {"repository": {"vulnerabilityAlerts": None}}}
+    gh = make(lambda req: httpx.Response(200, json=body), tmp_path)
+    assert gh.open_alerts("o/r") == []
+
+
+def test_open_alerts_skips_null_vulnerability_node(tmp_path: Path):
+    body = _alerts_body([{"createdAt": "2026-09-01T00:00:00Z", "vulnerableManifestPath": "p",
+                          "securityVulnerability": None}, _good_node()])
+    gh = make(lambda req: httpx.Response(200, json=body), tmp_path)
+    alerts = gh.open_alerts("o/r")
+    assert len(alerts) == 1 and alerts[0].ghsa_id == "GHSA-1"

@@ -2,6 +2,7 @@ services:
   depwatch:
     build: .
     env_file: .env
+    user: "1000:1000"
     volumes:
       - ./data:/data
     restart: unless-stopped

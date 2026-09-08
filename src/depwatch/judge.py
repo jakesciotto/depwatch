@@ -1,4 +1,5 @@
 import json
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -16,6 +17,7 @@ TIER2_SYSTEM = ("You review a dependency change against the code that uses it. N
                 "lines in plain sentences. Set actionable true when the engineer must change code or upgrade "
                 "to stay safe.")
 CAP_NOTE = "not analysed: run cap reached"
+log = logging.getLogger("depwatch")
 _RISKS = {"low", "medium", "high"}
 
 
@@ -72,10 +74,10 @@ class Tier2:
             r = self.client.messages.parse(model=self.model, max_tokens=2000, system=TIER2_SYSTEM,
                                             messages=[{"role": "user", "content": content}],
                                             output_format=Breakage)
-        except (anthropic.APIConnectionError, anthropic.AuthenticationError):
-            self.available = False
-            return
-        except anthropic.APIError:
+        except Exception as e:
+            if isinstance(e, (anthropic.APIConnectionError, anthropic.AuthenticationError, TypeError)):
+                self.available = False
+            log.warning("tier two read for %s: %s", f.package, type(e).__name__)
             return
         parsed = r.parsed_output
         if parsed is not None:
@@ -95,6 +97,8 @@ def run(findings: list[Finding], checkout_for: Callable[[str], Path | None], tie
             checkout = checkout_for(f.repo)
             if checkout is not None:
                 f.import_sites = imports.find(checkout, f.package, f.ecosystem)
+        if f.kind == "release" and f.severity == "patch":
+            continue
         tier1.annotate(f)
     capped = 0
     for f in findings:

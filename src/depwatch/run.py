@@ -34,6 +34,12 @@ class Services:
     vault: Vault
     notifier: Notifier
     now: Callable[[], datetime]
+    http: httpx.Client | None = None
+
+    def close(self) -> None:
+        self.state.close()
+        if self.http is not None:
+            self.http.close()
 
 
 def build_services(cfg: Config) -> Services:
@@ -45,7 +51,8 @@ def build_services(cfg: Config) -> Services:
         config=cfg, state=State(cfg.data_dir / "depwatch.db"), repos=repos, registry=Registry(http), github=gh,
         tier1=judge.Tier1(http, cfg.tier1_base_url, cfg.tier1_model),
         tier2=judge.Tier2(anthropic.Anthropic(api_key=cfg.anthropic_api_key), cfg.tier2_model, cfg.tier2_max_calls),
-        vault=Vault(repos, cfg.vault_repo, cfg.vault_folder, {}), notifier=Notifier(http, cfg.ntfy_topic), now=lambda: datetime.now(tz),
+        vault=Vault(repos, cfg.vault_repo, cfg.vault_folder), notifier=Notifier(http, cfg.ntfy_topic),
+        now=lambda: datetime.now(tz), http=http,
     )
 
 
@@ -63,14 +70,15 @@ def _collect(s: Services, feeds: tuple[str, ...]) -> Collected:
         try:
             path = s.repos.sync(repo)
             head = s.repos.head(path)
-            c.checkouts[repo], c.heads[repo] = path, head
+            c.checkouts[repo] = path
             if "landed" in feeds:
                 c.findings += landed.collect(repo, path, s.repos, s.state.head(repo), head)
             if "releases" in feeds:
                 c.findings += releases.collect(repo, path, s.registry, s.github, s.state)
             if "advisories" in feeds:
                 c.findings += advisories.collect(repo, s.github, s.state)
-        except (RepoError, RuntimeError, httpx.HTTPError) as e:
+            c.heads[repo] = head
+        except Exception as e:
             log.warning("repo %s: %s", repo, e)
             c.errors[repo] = str(e)
     return c
@@ -101,7 +109,7 @@ def _finish(s: Services, c: Collected, kind: str, rel_path: str, build, message:
     s.state.mark_advisories(c.findings)
     s.state.record_run(kind, "ok", rel_path, len(c.findings))
     s.state.commit()
-    return published[0] if published else text
+    return published[-1] if published else text
 
 
 def digest(s: Services, dry_run: bool) -> str:
@@ -132,7 +140,7 @@ def advisory(s: Services, dry_run: bool) -> str:
         s.state.commit()
         return ""
     report = judge.run(c.findings, c.checkouts.get, s.tier1, s.tier2)
-    section = note.render_advisory_section(now.date(), c.findings, report)
+    section = note.render_advisory_section(now.date(), c.findings, report, c.errors)
 
     def build(existing: str | None) -> str:
         if existing is None:

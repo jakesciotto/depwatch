@@ -9,7 +9,7 @@ from tests.conftest import git
 
 def make(tmp_path: Path, bare_remote: Path):
     repos = Repos(tmp_path / "data", {}, remote_base=str(tmp_path) + "/")
-    return Vault(repos, "remote", "resources/dependencies", {}), repos
+    return Vault(repos, "remote", "resources/dependencies"), repos
 
 
 def test_publish_creates_and_pushes(tmp_path: Path, git_repo: Path, bare_remote: Path):

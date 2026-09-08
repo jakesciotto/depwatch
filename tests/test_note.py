@@ -63,7 +63,7 @@ def test_render_advisory_section(fixtures: Path):
             actionable=True, import_sites=[("a.js", 1, "x")]),
           F(kind="advisory", repo="jakesciotto/homebase", package="lodash", current=">= 4.0.0, < 4.17.21", target=None,
             severity="moderate", source_url="https://github.com/advisories/GHSA-4444-5555-6666", summary="Prototype pollution.")]
-    text = note.render_advisory_section(date(2026, 9, 16), fs, JudgeReport(True, False, 0))
+    text = note.render_advisory_section(date(2026, 9, 16), fs, JudgeReport(True, False, 0), {})
     assert text == (fixtures / "notes/advisory-append.md").read_text()
 
 
@@ -100,3 +100,9 @@ def test_multiline_summary_and_breakage_stay_one_line():
     matching = [l for l in text.splitlines() if "x 1.0.0 -> 2.0.0" in l]
     assert len(matching) == 1
     assert matching[0].endswith("[tier:: backlog]")
+
+
+def test_advisory_section_reports_repo_errors():
+    text = note.render_advisory_section(date(2026, 9, 16), [], OK, {"jakesciotto/recall": "git fetch failed"})
+    assert "- fetch failed: recall: git fetch failed" in text
+    assert "No new advisories." not in text

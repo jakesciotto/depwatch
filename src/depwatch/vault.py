@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Callable
 
 from .repos import RepoError, Repos
@@ -9,7 +8,7 @@ class VaultError(Exception):
 
 
 class Vault:
-    def __init__(self, repos: Repos, repo: str, folder: str, git_env: dict[str, str]):
+    def __init__(self, repos: Repos, repo: str, folder: str):
         self.repos, self.repo, self.folder = repos, repo, folder.strip("/")
 
     def publish(self, rel_path: str, build: Callable[[str | None], str], message: str, attempts: int = 3) -> None:

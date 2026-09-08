@@ -97,9 +97,12 @@ class GitHub:
             body = r.json()
             if body.get("errors"):
                 raise RuntimeError(f"GraphQL error for {repo}: {body['errors'][0].get('message')}")
-            conn = body["data"]["repository"]["vulnerabilityAlerts"]
+            conn = (body["data"]["repository"].get("vulnerabilityAlerts")
+                    or {"nodes": [], "pageInfo": {"hasNextPage": False}})
             for node in conn["nodes"]:
-                sv = node["securityVulnerability"]
+                sv = node.get("securityVulnerability")
+                if not sv:
+                    continue
                 adv = sv["advisory"]
                 eco = sv["package"]["ecosystem"]
                 fp = sv.get("firstPatchedVersion")

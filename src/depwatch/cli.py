@@ -4,10 +4,12 @@ import os
 import sys
 from pathlib import Path
 
+import httpx
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from . import config, run
+from .notify import Notifier
 
 log = logging.getLogger("depwatch")
 
@@ -18,13 +20,17 @@ def _services(path: str) -> run.Services:
 
 def _guarded(fn, config_path: str):
     def job():
-        s = _services(config_path)
+        s = None
         try:
+            s = _services(config_path)
             fn(s, dry_run=False)
-        except Exception:
+        except Exception as e:
             log.exception("%s run failed", fn.__name__)
+            notifier = s.notifier if s is not None else Notifier(httpx.Client(), os.environ.get("NTFY_TOPIC"))
+            notifier.failure(f"{fn.__name__} run: {type(e).__name__}: {e}")
         finally:
-            s.state.close()
+            if s is not None:
+                s.close()
     return job
 
 
@@ -41,6 +47,7 @@ def _build_scheduler(cfg: config.Config, config_path: str) -> BlockingScheduler:
 
 def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     p = argparse.ArgumentParser(prog="depwatch")
     sub = p.add_subparsers(dest="cmd", required=True)
     for name in ("digest", "advisory"):

@@ -12,6 +12,8 @@ Obsidian vault by pushing to the vault's git remote. Runs on vinelab.
 4. `docker compose exec depwatch depwatch digest --dry-run` and read the output.
 5. `docker compose exec depwatch depwatch digest` to publish once by hand.
 
+The container runs as uid 1000, which is jake on vinelab, so `./data` stays owned by jake.
+
 The compose project name is the directory name. Keep exactly one checkout on vinelab.
 
 ## Local development

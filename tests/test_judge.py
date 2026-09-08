@@ -92,7 +92,7 @@ def test_run_applies_cap_and_actionable_rule(tmp_path: Path):
     assert [f.import_sites != [] for f in fs] == [True, True, True, False, False]
     assert [f.breakage for f in fs] == ["b", "not analysed: run cap reached", None, None, None]
     assert [f.actionable for f in fs] == [False, True, False, True, False]
-    assert all(f.summary == "s" for f in fs)
+    assert [f.summary for f in fs] == ["s", "s", None, "s", "s"]
     assert (report.tier1_available, report.tier2_available, report.tier2_capped) == (True, True, 1)
 
 
@@ -105,3 +105,15 @@ def test_run_with_tier2_unavailable_marks_qualifying_actionable(tmp_path: Path):
     report = judge.run(fs, lambda repo: tmp_path, ok, t2)
     assert [f.actionable for f in fs] == [True, False]
     assert not report.tier2_available
+
+
+def test_tier2_type_error_marks_unavailable():
+    t = judge.Tier2(FakeAnthropic(TypeError("no auth")), "claude-sonnet-5", max_calls=10)
+    f = finding(); t.read(f)
+    assert not t.available and f.breakage is None
+
+
+def test_tier2_other_error_keeps_available():
+    t = judge.Tier2(FakeAnthropic(ValueError("bad shape")), "claude-sonnet-5", max_calls=10)
+    f = finding(); t.read(f)
+    assert t.available and f.breakage is None

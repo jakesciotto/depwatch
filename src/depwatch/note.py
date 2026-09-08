@@ -128,6 +128,9 @@ def digest_rerun_section(generated: datetime, repos: int, findings: list[Finding
     return f"## Digest re-run {generated.isoformat()}\n\n" + _body(findings, report, repo_errors)
 
 
-def render_advisory_section(day: date, findings: list[Finding], report: JudgeReport) -> str:
-    body = "\n".join(line(f, report) for f in findings) if findings else "No new advisories."
+def render_advisory_section(day: date, findings: list[Finding], report: JudgeReport,
+                            repo_errors: dict[str, str]) -> str:
+    lines = [line(f, report) for f in findings]
+    lines += [f"- fetch failed: {_repo_name(repo)}: {reason}" for repo, reason in sorted(repo_errors.items())]
+    body = "\n".join(lines) if lines else "No new advisories."
     return f"## Advisory {day.isoformat()}\n\n{body}\n"

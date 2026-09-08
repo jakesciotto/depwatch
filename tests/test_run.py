@@ -67,7 +67,7 @@ def services(tmp_path: Path):
     gh = FakeGitHub(alerts={"duels": [Alert("GHSA-1", "high", "hono", "npm", "< 4.6.2", "4.6.2", "S", "D",
                                              "https://github.com/advisories/GHSA-1", "package.json", "2026-09-01T00:00:00Z")]})
     s = run.Services(config=cfg, state=State(cfg.data_dir / "depwatch.db"), repos=repos, registry=reg, github=gh,
-                     tier1=t1, tier2=t2, vault=Vault(repos, "obsidian", "resources/dependencies", {}), notifier=Notes(),
+                     tier1=t1, tier2=t2, vault=Vault(repos, "obsidian", "resources/dependencies"), notifier=Notes(),
                      now=lambda: datetime(2026, 9, 14, 7, 0, tzinfo=TZ))
     return s, vault_src
 
@@ -165,3 +165,12 @@ def test_digest_rerun_publish_returns_actual_published_text(services, tmp_path):
     note = (vault_src / "resources/dependencies/2026-W38.md").read_text()
     assert text == note
     assert "## Digest re-run" in text
+
+
+def test_feed_failure_does_not_move_head(services, monkeypatch):
+    s, _ = services
+    def boom(*a, **k): raise RuntimeError("git log failed")
+    monkeypatch.setattr(run.landed, "collect", boom)
+    text = run.digest(s, dry_run=False)
+    assert "fetch failed" in text
+    assert s.state.head("duels") is None

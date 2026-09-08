@@ -1,9 +1,11 @@
+import logging
 from pathlib import Path
 
 from . import manifests
 from .models import Finding
-from .versions import gap, newer
+from .versions import gap, newer, parse
 
+log = logging.getLogger("depwatch")
 _ORDER = {"major": 0, "minor": 1, "patch": 2}
 
 
@@ -27,7 +29,11 @@ def collect(repo: str, checkout: Path, registry, github, state) -> list[Finding]
         if info is None:
             continue
         severity = gap(current, info.version)
-        if severity is None or state.release_seen(repo, name, eco, info.version):
+        if severity is None:
+            if parse(current) is None or parse(info.version) is None:
+                log.debug("%s %s: unparseable version %s or %s", repo, name, current, info.version)
+            continue
+        if state.release_seen(repo, name, eco, info.version):
             continue
         raw, url = "", _package_url(name, eco)
         if info.github_repo:
