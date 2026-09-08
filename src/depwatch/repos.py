@@ -27,7 +27,10 @@ class Repos:
     def _git(self, *args: str, cwd: Path | None = None) -> str:
         r = subprocess.run(["git", *args], cwd=cwd, env=self.env, capture_output=True, text=True)
         if r.returncode != 0:
-            err = r.stderr.replace(self.env.get("GITHUB_TOKEN", "\0"), "***")
+            err = r.stderr
+            token = self.env.get("GITHUB_TOKEN")
+            if token:
+                err = err.replace(token, "***")
             raise RepoError(f"git {args[0]} failed: {err.strip()}")
         return r.stdout
 
@@ -54,7 +57,8 @@ class Repos:
     def changed_files(self, path: Path, since: str | None, until: str, globs: tuple[str, ...]) -> list[Commit]:
         rng = f"{since}..{until}" if since else until
         extra = [] if since else ["-n", "50"]
-        out = self._git("log", "--reverse", "--name-only", "--format=%x1e%H %cI", *extra, rng, cwd=path)
+        out = self._git("log", "--reverse", "--first-parent", "--diff-merges=first-parent",
+                        "--name-only", "--format=%x1e%H %cI", *extra, rng, cwd=path)
         commits: list[Commit] = []
         for block in out.split("\x1e")[1:]:
             header, _, body = block.partition("\n")

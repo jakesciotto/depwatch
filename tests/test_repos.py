@@ -44,6 +44,19 @@ def test_changed_files_between_heads(tmp_path: Path, git_repo: Path):
     assert commits[0].date[:2] == "20"
 
 
+def test_changed_files_merge_commit_reports_first_parent_diff(tmp_path: Path, git_repo: Path):
+    repos = Repos(tmp_path / "data", {})
+    base = git("rev-parse", "HEAD", cwd=git_repo)
+    git("checkout", "-q", "-b", "feature", cwd=git_repo)
+    commit_file(git_repo, "package.json", "{}", "add manifest on feature")
+    git("checkout", "-q", "main", cwd=git_repo)
+    commit_file(git_repo, "notes.md", "x", "unrelated on main")
+    git("merge", "--no-ff", "-q", "-m", "merge", "feature", cwd=git_repo)
+    merge_sha = git("rev-parse", "HEAD", cwd=git_repo)
+    commits = repos.changed_files(git_repo, base, merge_sha, MANIFEST_GLOBS)
+    assert [(c.sha, c.files) for c in commits] == [(merge_sha, ["package.json"])]
+
+
 def test_changed_files_without_since_uses_recent_history(tmp_path: Path, git_repo: Path):
     repos = Repos(tmp_path / "data", {})
     a = commit_file(git_repo, "pyproject.toml", "[project]", "py")
