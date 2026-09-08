@@ -134,3 +134,34 @@ def test_publish_failure_notifies_and_keeps_state(services, monkeypatch):
         run.digest(s, dry_run=False)
     assert s.notifier.msgs and "push rejected" in s.notifier.msgs[0]
     assert s.state.head("duels") is None
+
+
+def _bump_hono(tmp_path: Path) -> None:
+    duels = tmp_path / "duels"
+    (duels / "package.json").write_text(json.dumps({"dependencies": {"hono": "4.6.2", "zod": "3.23.0"}}))
+    git("add", "-A", cwd=duels)
+    git("commit", "-q", "-m", "bump hono", cwd=duels)
+    git("push", "-q", cwd=duels)
+
+
+def test_advisory_publish_does_not_move_landed_watermark(services, tmp_path):
+    s, _ = services
+    run.digest(s, dry_run=False)
+    _bump_hono(tmp_path)
+    s.github.alerts["duels"].append(Alert("GHSA-2", "critical", "zod", "npm", "< 3.24", "3.24.0", "S2", "D2",
+                                          "https://github.com/advisories/GHSA-2", "package.json", "2026-09-15T00:00:00Z"))
+    s.now = lambda: datetime(2026, 9, 16, 7, 0, tzinfo=TZ)
+    run.advisory(s, dry_run=False)
+    text = run.digest(s, dry_run=True)
+    assert "[hono 4.6.1 -> 4.6.2]" in text
+
+
+def test_digest_rerun_publish_returns_actual_published_text(services, tmp_path):
+    s, vault_src = services
+    run.digest(s, dry_run=False)
+    _bump_hono(tmp_path)
+    text = run.digest(s, dry_run=False)
+    git("pull", "-q", cwd=vault_src)
+    note = (vault_src / "resources/dependencies/2026-W38.md").read_text()
+    assert text == note
+    assert "## Digest re-run" in text

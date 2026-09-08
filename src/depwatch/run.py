@@ -76,23 +76,32 @@ def _collect(s: Services, feeds: tuple[str, ...]) -> Collected:
     return c
 
 
-def _finish(s: Services, c: Collected, kind: str, rel_path: str, build, message: str, dry_run: bool, text: str) -> str:
+def _finish(s: Services, c: Collected, kind: str, rel_path: str, build, message: str, dry_run: bool, text: str,
+           set_heads: bool) -> str:
     if dry_run:
         return text
+    published: list[str] = []
+
+    def record_and_build(existing: str | None) -> str:
+        result = build(existing)
+        published.append(result)
+        return result
+
     try:
-        s.vault.publish(rel_path, build, message)
+        s.vault.publish(rel_path, record_and_build, message)
     except (VaultError, RepoError) as e:
         s.notifier.failure(f"{kind} run: {e}")
         s.state.record_run(kind, "failed", rel_path, len(c.findings))
         s.state.commit()
         raise
-    for repo, head in c.heads.items():
-        s.state.set_head(repo, head)
+    if set_heads:
+        for repo, head in c.heads.items():
+            s.state.set_head(repo, head)
     s.state.mark_releases(c.findings)
     s.state.mark_advisories(c.findings)
     s.state.record_run(kind, "ok", rel_path, len(c.findings))
     s.state.commit()
-    return text
+    return published[0] if published else text
 
 
 def digest(s: Services, dry_run: bool) -> str:
@@ -110,7 +119,7 @@ def digest(s: Services, dry_run: bool) -> str:
             return fresh
         return existing.rstrip("\n") + "\n\n" + note.digest_rerun_section(now, repos_n, c.findings, report, skipped, c.errors)
 
-    return _finish(s, c, "digest", rel_path, build, f"depwatch: {week} digest", dry_run, fresh)
+    return _finish(s, c, "digest", rel_path, build, f"depwatch: {week} digest", dry_run, fresh, set_heads=True)
 
 
 def advisory(s: Services, dry_run: bool) -> str:
@@ -131,4 +140,4 @@ def advisory(s: Services, dry_run: bool) -> str:
             return head + f"\n# Dependencies {week}\n\n" + section
         return existing.rstrip("\n") + "\n\n" + section
 
-    return _finish(s, c, "advisory", rel_path, build, f"depwatch: {week} advisory", dry_run, section)
+    return _finish(s, c, "advisory", rel_path, build, f"depwatch: {week} advisory", dry_run, section, set_heads=False)
