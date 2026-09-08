@@ -37,6 +37,5 @@ def find(checkout: Path, package: str, ecosystem: str) -> list[tuple[str, int, s
             for i, line in enumerate(lines, 1):
                 if pat.search(line):
                     hits.append((rel.as_posix(), i, line.strip()))
-                    if len(hits) >= CAP:
-                        return hits
-    return hits
+    hits.sort(key=lambda h: (h[0], h[1]))
+    return hits[:CAP]

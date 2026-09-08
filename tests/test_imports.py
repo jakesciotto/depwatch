@@ -33,3 +33,18 @@ def test_cap_and_docker(tmp_path: Path):
     (tmp_path / "big.ts").write_text("import 'x'\n" * 30)
     assert len(imports.find(tmp_path, "x", "npm")) == 20
     assert imports.find(tmp_path, "node", "docker") == []
+
+
+def test_results_sorted_by_path_before_walk_order(tmp_path: Path):
+    (tmp_path / "src").mkdir()
+    (tmp_path / "z.ts").write_text("import 'x'\n")
+    (tmp_path / "src/a.ts").write_text("import 'x'\n")
+    assert imports.find(tmp_path, "x", "npm") == [("src/a.ts", 1, "import 'x'"), ("z.ts", 1, "import 'x'")]
+
+
+def test_cap_keeps_lowest_paths(tmp_path: Path):
+    (tmp_path / "z.ts").write_text("import 'x'\n" * 30)
+    (tmp_path / "a.ts").write_text("import 'x'\n")
+    results = imports.find(tmp_path, "x", "npm")
+    assert len(results) == 20
+    assert results[0][0] == "a.ts"
