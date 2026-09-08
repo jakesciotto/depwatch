@@ -6,7 +6,7 @@ repos: 12
 findings:
   advisories: 1
   landed: 2
-  releases: 4
+  releases: 5
 skipped: 1
 ---
 

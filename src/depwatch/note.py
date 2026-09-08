@@ -65,18 +65,8 @@ def line(f: Finding, report: JudgeReport) -> str:
     return f"{box}{body}{tail}"
 
 
-def _release_line_count(findings: list[Finding]) -> int:
-    """Counts release lines as rendered: patches collapse to one line per repo."""
-    rel = [f for f in findings if f.kind == "release"]
-    big = sum(1 for f in rel if f.severity != "patch")
-    patch_repos = {f.repo for f in rel if f.severity == "patch"}
-    return big + len(patch_repos)
-
-
 def render_frontmatter(week: str, generated: datetime, repos: int, findings: list[Finding], skipped: int) -> str:
-    n = {"advisory": sum(1 for f in findings if f.kind == "advisory"),
-         "landed": sum(1 for f in findings if f.kind == "landed"),
-         "release": _release_line_count(findings)}
+    n = {k: sum(1 for f in findings if f.kind == k) for k in ("advisory", "landed", "release")}
     return ("---\n"
             "type: dependency-digest\n"
             f"week: {week}\n"
