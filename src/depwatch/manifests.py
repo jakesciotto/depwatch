@@ -1,4 +1,6 @@
+import fnmatch
 import json
+import os
 import re
 import tomllib
 from pathlib import Path
@@ -20,11 +22,11 @@ _PEP508_SPEC = re.compile(r"[<>=!~]=?.*$")
 
 def _walk(root: Path, names: tuple[str, ...]) -> list[Path]:
     out = []
-    for p in root.rglob("*"):
-        if any(part in _SKIP_DIRS for part in p.relative_to(root).parts):
-            continue
-        if p.is_file() and any(p.match(n) for n in names):
-            out.append(p)
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = sorted(d for d in dirnames if d not in _SKIP_DIRS)
+        for name in sorted(filenames):
+            if any(fnmatch.fnmatch(name, n) for n in names):
+                out.append(Path(dirpath, name))
     return sorted(out)
 
 
