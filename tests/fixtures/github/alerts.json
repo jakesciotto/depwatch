@@ -1,0 +1,14 @@
+{"data": {"repository": {"vulnerabilityAlerts": {"pageInfo": {"hasNextPage": false, "endCursor": null}, "nodes": [
+  {"createdAt": "2026-09-01T00:00:00Z", "vulnerableManifestPath": "server/package.json",
+   "securityVulnerability": {"severity": "HIGH", "vulnerableVersionRange": "< 4.6.2",
+     "firstPatchedVersion": {"identifier": "4.6.2"},
+     "package": {"name": "hono", "ecosystem": "NPM"},
+     "advisory": {"ghsaId": "GHSA-aaaa-bbbb-cccc", "summary": "Path traversal", "description": "Long text.",
+                  "permalink": "https://github.com/advisories/GHSA-aaaa-bbbb-cccc"}}},
+  {"createdAt": "2026-09-02T00:00:00Z", "vulnerableManifestPath": "pyproject.toml",
+   "securityVulnerability": {"severity": "MODERATE", "vulnerableVersionRange": ">= 3.0, < 3.1.5",
+     "firstPatchedVersion": null,
+     "package": {"name": "psycopg", "ecosystem": "PIP"},
+     "advisory": {"ghsaId": "GHSA-dddd-eeee-ffff", "summary": "DoS", "description": "Text.",
+                  "permalink": "https://github.com/advisories/GHSA-dddd-eeee-ffff"}}}
+]}}}}
