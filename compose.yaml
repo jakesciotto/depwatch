@@ -1,0 +1,10 @@
+services:
+  depwatch:
+    build: .
+    env_file: .env
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
