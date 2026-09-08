@@ -1,0 +1,5 @@
+# comment
+requests==2.32.3
+flask>=3.0
+-r other.txt
+--index-url https://example.invalid

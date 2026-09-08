@@ -1,0 +1,1 @@
+{"name": "server", "dependencies": {"hono": "^4.6.0"}, "devDependencies": {"vitest": "^3.2.0"}}

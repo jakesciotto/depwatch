@@ -1,0 +1,17 @@
+version = 1
+
+[[package]]
+name = "httpx"
+version = "0.28.1"
+
+[[package]]
+name = "pydantic"
+version = "2.13.5"
+
+[[package]]
+name = "pytest"
+version = "9.1.1"
+
+[[package]]
+name = "rag"
+version = "0.1.0"
