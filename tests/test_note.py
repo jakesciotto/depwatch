@@ -77,3 +77,26 @@ def test_tier1_unavailable_flag_and_raw_first_line():
 def test_rerun_section_header():
     text = note.digest_rerun_section(GEN, 1, [], OK, 0, {})
     assert text.startswith("## Digest re-run 2026-09-14T07:00:00-04:00\n")
+
+
+def test_upstream_sorts_major_before_minor():
+    fs = [
+        F(package="minor-pkg", current="1.0.0", target="1.1.0", severity="minor",
+          source_url="https://example.com/minor"),
+        F(package="major-pkg", current="1.0.0", target="2.0.0", severity="major",
+          source_url="https://example.com/major"),
+    ]
+    text = note.render_digest("2026-W37", GEN, 1, fs, OK, 0, {})
+    major_idx = text.index("major-pkg")
+    minor_idx = text.index("minor-pkg")
+    assert major_idx < minor_idx
+
+
+def test_multiline_summary_and_breakage_stay_one_line():
+    f = F(package="x", current="1.0.0", target="2.0.0", severity="major",
+          summary="Line one.\nLine two.", breakage="Breaks a.js\nand b.js", actionable=True,
+          import_sites=[("a.js", 1, "x")])
+    text = note.render_digest("2026-W37", GEN, 1, [f], JudgeReport(True, False, 0), 0, {})
+    matching = [l for l in text.splitlines() if "x 1.0.0 -> 2.0.0" in l]
+    assert len(matching) == 1
+    assert matching[0].endswith("[tier:: backlog]")

@@ -21,17 +21,22 @@ def _repo_link(repo: str) -> str:
     return f"[{_repo_name(repo)}](https://github.com/{repo})"
 
 
+def _flatten(text: str) -> str:
+    """Collapses newlines/whitespace from LLM-authored text so a finding stays one line."""
+    return " ".join(text.split())
+
+
 def _summary(f: Finding, report: JudgeReport) -> str:
     if f.summary:
-        return f" {f.summary}"
+        return f" {_flatten(f.summary)}"
     if not report.tier1_available and f.raw:
-        return f" {f.raw.splitlines()[0].strip()}"
+        return f" {_flatten(f.raw.splitlines()[0])}"
     return ""
 
 
 def _breakage(f: Finding, report: JudgeReport) -> str:
     if f.breakage and f.breakage != CAP_NOTE:
-        return f" Breakage: {f.breakage}"
+        return f" Breakage: {_flatten(f.breakage)}"
     if f.breakage == CAP_NOTE:
         return f" Breakage: {CAP_NOTE}."
     if f.qualifies_for_tier2 and not report.tier2_available:
@@ -80,6 +85,9 @@ def render_frontmatter(week: str, generated: datetime, repos: int, findings: lis
             "---\n")
 
 
+_SEVERITY_RANK = {"major": 0, "minor": 1}
+
+
 def _body(findings: list[Finding], report: JudgeReport, repo_errors: dict[str, str]) -> str:
     if not findings and not repo_errors:
         return "No changes this week.\n"
@@ -98,7 +106,7 @@ def _body(findings: list[Finding], report: JudgeReport, repo_errors: dict[str, s
         if landed:
             section.append("### Landed\n" + "\n".join(line(f, report) for f in landed) + "\n")
         rel = [f for f in findings if f.repo == repo and f.kind == "release"]
-        big = [f for f in rel if f.severity != "patch"]
+        big = sorted((f for f in rel if f.severity != "patch"), key=lambda f: _SEVERITY_RANK.get(f.severity, 99))
         patches = [f for f in rel if f.severity == "patch"]
         if rel:
             lines = [line(f, report) for f in big]
