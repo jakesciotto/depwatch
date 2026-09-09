@@ -66,3 +66,34 @@ def test_repo_not_owner_slash_name_raises(tmp_path: Path):
     p.write_text(SAMPLE.replace('"jakesciotto/b"', '"b"'))
     with pytest.raises(config.ConfigError, match="owner/name"):
         config.load(p, ENV)
+
+
+def test_tier2_provider_defaults_to_local_with_tier1_base_url(tmp_path: Path):
+    p = tmp_path / "config.toml"
+    p.write_text(SAMPLE)
+    cfg = config.load(p, ENV)
+    assert cfg.tier2_provider == "local"
+    assert cfg.tier2_base_url == cfg.tier1_base_url
+
+
+def test_tier2_provider_anthropic_with_key_loads(tmp_path: Path):
+    p = tmp_path / "config.toml"
+    p.write_text(SAMPLE.replace('[llm.tier2]', '[llm.tier2]\nprovider = "anthropic"'))
+    cfg = config.load(p, ENV)
+    assert cfg.tier2_provider == "anthropic"
+
+
+def test_tier2_provider_anthropic_without_key_raises(tmp_path: Path):
+    p = tmp_path / "config.toml"
+    p.write_text(SAMPLE.replace('[llm.tier2]', '[llm.tier2]\nprovider = "anthropic"'))
+    env = dict(ENV)
+    del env["ANTHROPIC_API_KEY"]
+    with pytest.raises(config.ConfigError, match="ANTHROPIC_API_KEY"):
+        config.load(p, env)
+
+
+def test_tier2_provider_bogus_raises(tmp_path: Path):
+    p = tmp_path / "config.toml"
+    p.write_text(SAMPLE.replace('[llm.tier2]', '[llm.tier2]\nprovider = "bogus"'))
+    with pytest.raises(config.ConfigError, match="provider"):
+        config.load(p, ENV)

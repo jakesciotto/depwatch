@@ -117,3 +117,63 @@ def test_tier2_other_error_keeps_available():
     t = judge.Tier2(FakeAnthropic(ValueError("bad shape")), "claude-sonnet-5", max_calls=10)
     f = finding(); t.read(f)
     assert t.available and f.breakage is None
+
+
+def local_tier2(handler, max_calls=10):
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    return judge.LocalTier2(client, "http://llm/v1", "deep", max_calls)
+
+
+def test_local_tier2_sets_breakage():
+    seen = []
+    def handler(req):
+        seen.append((str(req.url), json.loads(req.content)))
+        return httpx.Response(200, json={"choices": [{"message": {
+            "content": '{"breakage": "a.ts:1 calls foo().", "actionable": true}'}}]})
+    t = local_tier2(handler)
+    f = finding(); f.import_sites = [("a.ts", 1, "import { foo } from 'hono'")]
+    t.read(f)
+    assert (f.breakage, f.actionable, t.calls) == ("a.ts:1 calls foo().", True, 1)
+    url, body = seen[0]
+    assert url == "http://llm/v1/chat/completions"
+    assert body["model"] == "deep"
+    assert body["response_format"] == {"type": "json_object"}
+    assert "a.ts:1: import { foo } from 'hono'" in body["messages"][1]["content"]
+
+
+def test_local_tier2_bad_json_leaves_breakage_none():
+    t = local_tier2(lambda req: httpx.Response(200, json={"choices": [{"message": {"content": "not json"}}]}))
+    f = finding(); t.read(f)
+    assert f.breakage is None and t.available
+
+
+def test_local_tier2_truncated_leaves_breakage_none():
+    t = local_tier2(lambda req: httpx.Response(200, json={"choices": [{
+        "finish_reason": "length", "message": {"content": ""}}]}))
+    f = finding(); t.read(f)
+    assert f.breakage is None and t.available
+
+
+def test_local_tier2_connection_error_marks_unavailable():
+    calls = []
+    def handler(req):
+        calls.append(1); raise httpx.ConnectError("down")
+    t = local_tier2(handler)
+    t.read(finding()); t.read(finding())
+    assert not t.available and len(calls) == 1
+
+
+def test_run_applies_cap_with_local_tier2(tmp_path: Path):
+    (tmp_path / "a.ts").write_text("import 'hono'\n")
+    ok = tier1(lambda req: httpx.Response(200, json={"choices": [{"message": {"content": '{"summary": "s", "risk": "low"}'}}]}))
+    calls = []
+    def handler(req):
+        calls.append(1)
+        return httpx.Response(200, json={"choices": [{"message": {
+            "content": '{"breakage": "b", "actionable": false}'}}]})
+    t2 = local_tier2(handler, max_calls=1)
+    fs = [finding(pkg="hono"), finding(pkg="hono")]
+    report = judge.run(fs, lambda repo: tmp_path, ok, t2)
+    assert [f.breakage for f in fs] == ["b", "not analysed: run cap reached"]
+    assert len(calls) == 1
+    assert report.tier2_capped == 1

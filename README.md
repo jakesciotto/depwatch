@@ -16,6 +16,12 @@ The container runs as uid 1000, which is jake on vinelab, so `./data` stays owne
 
 The compose project name is the directory name. Keep exactly one checkout on vinelab.
 
+## Configuration
+
+Tier two (the breakage read) runs on the local llama-swap `deep` model by
+default. Set `provider = "anthropic"` under `[llm.tier2]` and `ANTHROPIC_API_KEY`
+to use the Claude API instead.
+
 ## Local development
 
 ```bash

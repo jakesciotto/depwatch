@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Callable
 from zoneinfo import ZoneInfo
 
-import anthropic
 import httpx
 
 from . import advisories, judge, landed, note, releases
@@ -30,7 +29,7 @@ class Services:
     registry: Registry
     github: GitHub
     tier1: judge.Tier1
-    tier2: judge.Tier2
+    tier2: judge.TierTwo
     vault: Vault
     notifier: Notifier
     now: Callable[[], datetime]
@@ -42,6 +41,13 @@ class Services:
             self.http.close()
 
 
+def _build_tier2(cfg: Config, http: httpx.Client) -> judge.TierTwo:
+    if cfg.tier2_provider == "anthropic":
+        import anthropic
+        return judge.Tier2(anthropic.Anthropic(api_key=cfg.anthropic_api_key), cfg.tier2_model, cfg.tier2_max_calls)
+    return judge.LocalTier2(http, cfg.tier2_base_url, cfg.tier2_model, cfg.tier2_max_calls)
+
+
 def build_services(cfg: Config) -> Services:
     http = httpx.Client(headers={"User-Agent": "depwatch"})
     gh = GitHub(http, cfg.github_token, cfg.data_dir)
@@ -50,7 +56,7 @@ def build_services(cfg: Config) -> Services:
     return Services(
         config=cfg, state=State(cfg.data_dir / "depwatch.db"), repos=repos, registry=Registry(http), github=gh,
         tier1=judge.Tier1(http, cfg.tier1_base_url, cfg.tier1_model),
-        tier2=judge.Tier2(anthropic.Anthropic(api_key=cfg.anthropic_api_key), cfg.tier2_model, cfg.tier2_max_calls),
+        tier2=_build_tier2(cfg, http),
         vault=Vault(repos, cfg.vault_repo, cfg.vault_folder), notifier=Notifier(http, cfg.ntfy_topic),
         now=lambda: datetime.now(tz), http=http,
     )

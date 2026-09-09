@@ -84,6 +84,47 @@ class Tier2:
             f.breakage, f.actionable = parsed.breakage.strip(), parsed.actionable
 
 
+class LocalTier2:
+    def __init__(self, client: httpx.Client, base_url: str, model: str, max_calls: int):
+        self.client, self.base_url, self.model, self.max_calls = client, base_url.rstrip("/"), model, max_calls
+        self.calls = 0
+        self.available = True
+
+    def read(self, f: Finding) -> None:
+        if not self.available:
+            return
+        sites = "\n".join(f"{p}:{n}: {t}" for p, n, t in f.import_sites)
+        content = _header(f) + f"Import sites:\n{sites}\n\nRelease notes or advisory:\n{f.raw}"
+        system = TIER2_SYSTEM + ' Reply with JSON only in the form {"breakage": "<sentences>", "actionable": true|false}.'
+        body = {"model": self.model, "temperature": 0, "max_tokens": 4000,
+                "response_format": {"type": "json_object"},
+                "messages": [{"role": "system", "content": system}, {"role": "user", "content": content}]}
+        self.calls += 1
+        try:
+            r = self.client.post(f"{self.base_url}/chat/completions", json=body, timeout=600)
+            r.raise_for_status()
+            choice = r.json()["choices"][0]
+        except httpx.TransportError:
+            self.available = False
+            return
+        except Exception as e:
+            log.warning("local tier two read for %s: %s", f.package, type(e).__name__)
+            return
+        raw = choice.get("message", {}).get("content")
+        if choice.get("finish_reason") == "length" or not isinstance(raw, str) or not raw:
+            log.warning("tier two truncated for %s", f.package)
+            return
+        try:
+            parsed = Breakage.model_validate(json.loads(raw))
+        except Exception as e:
+            log.warning("local tier two read for %s: %s", f.package, type(e).__name__)
+            return
+        f.breakage, f.actionable = parsed.breakage.strip(), parsed.actionable
+
+
+TierTwo = Tier2 | LocalTier2
+
+
 @dataclass(frozen=True)
 class JudgeReport:
     tier1_available: bool
@@ -91,7 +132,7 @@ class JudgeReport:
     tier2_capped: int
 
 
-def run(findings: list[Finding], checkout_for: Callable[[str], Path | None], tier1: Tier1, tier2: Tier2) -> JudgeReport:
+def run(findings: list[Finding], checkout_for: Callable[[str], Path | None], tier1: Tier1, tier2: TierTwo) -> JudgeReport:
     for f in findings:
         if f.kind in ("release", "advisory"):
             checkout = checkout_for(f.repo)

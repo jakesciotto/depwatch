@@ -22,6 +22,8 @@ class Config:
     anthropic_api_key: str | None
     ntfy_topic: str | None
     data_dir: Path
+    tier2_provider: str = "local"
+    tier2_base_url: str = ""
 
 
 def _require(env: Mapping[str, str], key: str) -> str:
@@ -45,17 +47,26 @@ def load(path: Path, env: Mapping[str, str]) -> Config:
     tier2 = raw["llm"]["tier2"]
     allowlist = [_check_repo(r) for r in raw["repos"]["allowlist"]]
     _check_repo(vault["repo"])
+    tier1_base_url = tier1["base_url"].rstrip("/")
+    tier2_provider = tier2.get("provider", "local")
+    if tier2_provider not in ("local", "anthropic"):
+        raise ConfigError(f"llm.tier2 provider {tier2_provider!r} must be 'local' or 'anthropic'")
+    anthropic_api_key = env.get("ANTHROPIC_API_KEY") or None
+    if tier2_provider == "anthropic" and not anthropic_api_key:
+        raise ConfigError("ANTHROPIC_API_KEY is not set")
     return Config(
         vault_repo=vault["repo"],
         vault_folder=vault["folder"].strip("/"),
         timezone=vault.get("timezone", "America/New_York"),
-        tier1_base_url=tier1["base_url"].rstrip("/"),
+        tier1_base_url=tier1_base_url,
         tier1_model=tier1["model"],
         tier2_model=tier2.get("model", "claude-sonnet-5"),
         tier2_max_calls=int(tier2.get("max_calls_per_run", 10)),
         allowlist=allowlist,
         github_token=_require(env, "GITHUB_TOKEN"),
-        anthropic_api_key=env.get("ANTHROPIC_API_KEY") or None,
+        anthropic_api_key=anthropic_api_key,
         ntfy_topic=env.get("NTFY_TOPIC") or None,
         data_dir=Path(env.get("DEPWATCH_DATA_DIR", "data")),
+        tier2_provider=tier2_provider,
+        tier2_base_url=tier2.get("base_url", tier1_base_url).rstrip("/"),
     )
