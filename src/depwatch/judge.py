@@ -151,7 +151,8 @@ def run(findings: list[Finding], checkout_for: Callable[[str], Path | None], tie
             continue
         tier2.read(f)
     for f in findings:
-        if f.kind == "advisory" and f.severity in ("high", "critical"):
+        # Tier two cannot demote an imported high/critical advisory to non-actionable.
+        if f.kind == "advisory" and f.severity in ("high", "critical") and f.import_sites:
             f.actionable = True
         elif f.qualifies_for_tier2 and (f.breakage is None or f.breakage == CAP_NOTE):
             f.actionable = True

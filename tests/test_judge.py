@@ -91,7 +91,7 @@ def test_run_applies_cap_and_actionable_rule(tmp_path: Path):
     report = judge.run(fs, lambda repo: tmp_path, ok, t2)
     assert [f.import_sites != [] for f in fs] == [True, True, True, False, False]
     assert [f.breakage for f in fs] == ["b", "not analysed: run cap reached", None, None, None]
-    assert [f.actionable for f in fs] == [False, True, False, True, False]
+    assert [f.actionable for f in fs] == [False, True, False, False, False]
     assert [f.summary for f in fs] == ["s", "s", None, "s", "s"]
     assert (report.tier1_available, report.tier2_available, report.tier2_capped) == (True, True, 1)
 
@@ -105,6 +105,36 @@ def test_run_with_tier2_unavailable_marks_qualifying_actionable(tmp_path: Path):
     report = judge.run(fs, lambda repo: tmp_path, ok, t2)
     assert [f.actionable for f in fs] == [True, False]
     assert not report.tier2_available
+
+
+def test_imported_advisory_stays_actionable_despite_tier2_false(tmp_path: Path):
+    (tmp_path / "a.ts").write_text("import 'hono'\n")
+    ok = tier1(lambda req: httpx.Response(200, json={"choices": [{"message": {"content": '{"summary": "s", "risk": "low"}'}}]}))
+    t2 = judge.Tier2(FakeAnthropic(FakeParsed("no code change needed", False)), "m", 10)
+    f = finding(kind="advisory", sev="critical", pkg="hono")
+    judge.run([f], lambda repo: tmp_path, ok, t2)
+    assert f.breakage == "no code change needed"
+    assert f.actionable is True
+
+
+def test_advisory_actionable_requires_import_sites(tmp_path: Path):
+    import anthropic
+    ok = tier1(lambda req: httpx.Response(200, json={"choices": [{"message": {"content": '{"summary": "s", "risk": "low"}'}}]}))
+
+    imported = tmp_path / "imported"
+    imported.mkdir()
+    (imported / "a.ts").write_text("import 'hono'\n")
+    t2 = judge.Tier2(FakeAnthropic(anthropic.APIConnectionError(request=httpx.Request("POST", "http://x"))), "m", 10)
+    f_imported = finding(kind="advisory", sev="critical", pkg="hono")
+    judge.run([f_imported], lambda repo: imported, ok, t2)
+    assert f_imported.actionable is True
+
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    t2 = judge.Tier2(FakeAnthropic(anthropic.APIConnectionError(request=httpx.Request("POST", "http://x"))), "m", 10)
+    f_not_imported = finding(kind="advisory", sev="critical", pkg="hono")
+    judge.run([f_not_imported], lambda repo: empty, ok, t2)
+    assert f_not_imported.actionable is False
 
 
 def test_tier2_type_error_marks_unavailable():
