@@ -137,6 +137,7 @@ def test_local_tier2_sets_breakage():
     url, body = seen[0]
     assert url == "http://llm/v1/chat/completions"
     assert body["model"] == "deep"
+    assert body["max_tokens"] == 12000
     assert body["response_format"] == {"type": "json_object"}
     assert "a.ts:1: import { foo } from 'hono'" in body["messages"][1]["content"]
 

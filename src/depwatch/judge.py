@@ -96,7 +96,7 @@ class LocalTier2:
         sites = "\n".join(f"{p}:{n}: {t}" for p, n, t in f.import_sites)
         content = _header(f) + f"Import sites:\n{sites}\n\nRelease notes or advisory:\n{f.raw}"
         system = TIER2_SYSTEM + ' Reply with JSON only in the form {"breakage": "<sentences>", "actionable": true|false}.'
-        body = {"model": self.model, "temperature": 0, "max_tokens": 4000,
+        body = {"model": self.model, "temperature": 0, "max_tokens": 12000,
                 "response_format": {"type": "json_object"},
                 "messages": [{"role": "system", "content": system}, {"role": "user", "content": content}]}
         self.calls += 1

@@ -6,7 +6,11 @@ RAW_CAP = 4000
 
 def collect(repo: str, github, state) -> list[Finding]:
     out: list[Finding] = []
+    seen_permalinks: set[str] = set()
     for a in github.open_alerts(repo):
+        if a.permalink in seen_permalinks:
+            continue
+        seen_permalinks.add(a.permalink)
         if state.advisory_seen(repo, a.permalink):
             continue
         out.append(Finding(kind="advisory", repo=repo, package=a.package, ecosystem=a.ecosystem,
