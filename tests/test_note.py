@@ -112,3 +112,14 @@ def test_fallback_summary_skips_release_note_headers():
     f = F(raw="### 12.3.0\n\nDropped Python 3.9.\nMore text.")
     text = note.line(f, JudgeReport(tier1_available=False, tier2_available=False, tier2_capped=0))
     assert "Dropped Python 3.9." in text and "###" not in text
+
+
+def test_dev_releases_collapse_into_one_line_after_patches():
+    fs = [F(package="vitest", current="3.2.0", target="4.0.0", severity="major", dev=True),
+          F(package="@types/node", current="22.0.0", target="22.0.1", severity="patch", dev=True),
+          F(package="eslint", current="9.0.0", target="9.1.0", severity="minor", dev=True),
+          F(package="hono", current="4.6.1", target="4.7.0", severity="minor"),
+          F(package="typescript", current="5.6.3", target="5.6.4", severity="patch")]
+    text = note.render_digest("2026-W37", GEN, 1, fs, OK, 0, {})
+    assert "- Patches: typescript (1).\n- Dev: vitest (major), eslint (minor), @types/node (3).\n" in text
+    assert "vitest 3.2.0 -> 4.0.0" not in text and "[hono 4.6.1 -> 4.7.0]" in text

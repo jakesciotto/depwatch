@@ -216,3 +216,15 @@ def test_tiers_without_base_url_are_off():
     t1.annotate(f)
     assert not t1.available and f.summary is None
     assert not judge.LocalTier2(httpx.Client(), "", "", 10).available
+
+
+def test_dev_release_skips_both_tiers_and_stays_not_actionable():
+    calls = []
+    def handler(req):
+        calls.append(1)
+        return httpx.Response(200, json={"choices": [{"message": {"content": '{"summary": "s", "risk": "high"}'}}]})
+    t2 = judge.Tier2(FakeAnthropic(FakeParsed("breaks", True)), "m", 10)
+    f = finding(); f.dev = True; f.import_sites = [("a.ts", 1, "import x")]
+    judge.run([f], lambda repo: None, tier1(handler), t2)
+    assert calls == [] and t2.calls == 0
+    assert f.summary is None and f.breakage is None and f.actionable is False

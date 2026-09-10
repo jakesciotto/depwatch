@@ -108,12 +108,17 @@ def _body(findings: list[Finding], report: JudgeReport, repo_errors: dict[str, s
         if landed:
             section.append("### Landed\n" + "\n".join(line(f, report) for f in landed) + "\n")
         rel = [f for f in findings if f.repo == repo and f.kind == "release"]
-        big = sorted((f for f in rel if f.severity != "patch"), key=lambda f: _SEVERITY_RANK.get(f.severity, 99))
-        patches = [f for f in rel if f.severity == "patch"]
+        rank = lambda f: _SEVERITY_RANK.get(f.severity, 99)
+        big = sorted((f for f in rel if f.severity != "patch" and not f.dev), key=rank)
+        patches = [f for f in rel if f.severity == "patch" and not f.dev]
+        dev = sorted((f for f in rel if f.dev), key=rank)
         if rel:
             lines = [line(f, report) for f in big]
             if patches:
                 lines.append(f"- Patches: {', '.join(f.package for f in patches)} ({len(patches)}).")
+            if dev:
+                parts = [f.package if f.severity == "patch" else f"{f.package} ({f.severity})" for f in dev]
+                lines.append(f"- Dev: {', '.join(parts)} ({len(dev)}).")
             section.append("### Upstream\n" + "\n".join(lines) + "\n")
         parts.append("\n".join(section))
     return "\n".join(parts)

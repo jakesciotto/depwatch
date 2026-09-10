@@ -1,6 +1,7 @@
 import shutil
 import tempfile
 from pathlib import Path
+from typing import Callable
 
 from . import manifests
 from .models import Dependency, Finding
@@ -19,7 +20,8 @@ def _parse_at(repos, checkout: Path, sha: str) -> dict:
         shutil.rmtree(tmp, ignore_errors=True)
 
 
-def collect(repo: str, checkout: Path, repos, since: str | None, until: str) -> list[Finding]:
+def collect(repo: str, checkout: Path, repos, since: str | None, until: str,
+            ignored: Callable[[str], bool] = lambda name: False) -> list[Finding]:
     if since is None or since == until:
         return []
     out: list[Finding] = []
@@ -29,6 +31,8 @@ def collect(repo: str, checkout: Path, repos, since: str | None, until: str) -> 
         url = f"https://github.com/{repo}/commit/{c.sha}"
         for key in sorted(set(before) | set(after)):
             eco, name, path = key
+            if ignored(name):
+                continue
             old, new = before.get(key), after.get(key)
             if old and new and old.version == new.version:
                 continue

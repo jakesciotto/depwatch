@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from typing import Callable
 
 from . import manifests
 from .models import Finding
@@ -15,12 +16,15 @@ def _package_url(name: str, ecosystem: str) -> str:
     return f"https://pypi.org/project/{name}/"
 
 
-def collect(repo: str, checkout: Path, registry, github, state) -> list[Finding]:
+def collect(repo: str, checkout: Path, registry, github, state, ignored: Callable[[str], bool] = lambda name: False,
+            collapse_dev: bool = False) -> list[Finding]:
     lowest: dict[tuple[str, str], str] = {}
+    dev_only: dict[tuple[str, str], bool] = {}
     for d in manifests.parse(checkout):
-        if d.ecosystem == "docker":
+        if d.ecosystem == "docker" or ignored(d.name):
             continue
         key = (d.ecosystem, d.name)
+        dev_only[key] = dev_only.get(key, True) and d.kind == "dev"
         if key not in lowest or newer(lowest[key], d.version):
             lowest[key] = d.version
     out: list[Finding] = []
@@ -39,6 +43,7 @@ def collect(repo: str, checkout: Path, registry, github, state) -> list[Finding]
         if info.github_repo:
             raw, url = github.release_notes(info.github_repo, after=current, upto=info.version)
         out.append(Finding(kind="release", repo=repo, package=name, ecosystem=eco, current=current,
-                           target=info.version, severity=severity, source_url=url, raw=raw))
+                           target=info.version, severity=severity, source_url=url, raw=raw,
+                           dev=collapse_dev and dev_only[(eco, name)]))
     out.sort(key=lambda f: (_ORDER[f.severity], f.package))
     return out

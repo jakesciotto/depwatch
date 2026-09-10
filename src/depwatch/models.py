@@ -32,10 +32,11 @@ class Finding:
     actionable: bool = False
     commit: str | None = None
     commit_date: str | None = None
+    dev: bool = False
 
     @property
     def qualifies_for_tier2(self) -> bool:
-        return self.severity in ("major", "high", "critical") and bool(self.import_sites)
+        return self.severity in ("major", "high", "critical") and bool(self.import_sites) and not self.dev
 
 
 @dataclass(frozen=True)

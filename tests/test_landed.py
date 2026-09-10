@@ -52,3 +52,11 @@ def test_no_change_between_heads(tmp_path: Path, git_repo: Path):
     repos = Repos(tmp_path / "data", {})
     head = commit_manifest(git_repo, {"a": "1.0.0"}, "one")
     assert landed.collect("o/r", git_repo, repos, since=head, until=head) == []
+
+
+def test_ignored_packages_are_dropped(tmp_path: Path, git_repo: Path):
+    repos = Repos(tmp_path / "data", {})
+    base = commit_manifest(git_repo, {"hono": "4.6.1", "@types/node": "22.0.0"}, "base")
+    head = commit_manifest(git_repo, {"hono": "4.7.0", "@types/node": "22.0.1"}, "bump")
+    out = landed.collect("o/r", git_repo, repos, since=base, until=head, ignored=lambda name: name.startswith("@types/"))
+    assert [f.package for f in out] == ["hono"]

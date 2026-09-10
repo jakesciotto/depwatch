@@ -209,3 +209,24 @@ def test_build_services_follows_osv_flag(services):
         assert isinstance(on.osv, OSV) and off.osv is None
     finally:
         on.close(); off.close()
+
+
+def test_collect_passes_ignore_and_collapse_to_the_feeds(services, monkeypatch):
+    s, _ = services
+    s.config = replace(s.config, ignore_packages=["zod"], collapse_dev=False)
+    seen = {}
+    def rel(repo, path, registry, github, state, ignored, collapse_dev):
+        seen["rel"] = (ignored("zod"), ignored("hono"), collapse_dev); return []
+    def land(repo, path, repos, since, until, ignored):
+        seen["land"] = ignored("zod"); return []
+    monkeypatch.setattr(run.releases, "collect", rel)
+    monkeypatch.setattr(run.landed, "collect", land)
+    run.digest(s, dry_run=True)
+    assert seen == {"rel": (True, False, False), "land": True}
+
+
+def test_digest_drops_ignored_release(services):
+    s, _ = services
+    s.config = replace(s.config, ignore_packages=["zod"])
+    text = run.digest(s, dry_run=True)
+    assert "zod" not in text and "hono" in text

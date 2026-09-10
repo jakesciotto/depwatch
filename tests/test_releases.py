@@ -65,3 +65,39 @@ def test_pypi_source_url_without_github(tmp_path: Path):
     reg = FakeRegistry({("pypi", "flask"): RegistryInfo("3.1.0", None)})
     out = releases.collect("o/r", tmp_path / "co", reg, FakeGitHub(), State(tmp_path / "db"))
     assert out[0].source_url == "https://pypi.org/project/flask/"
+
+
+def write_full_manifest(root: Path, sub: str = "", **sections):
+    d = root / sub
+    d.mkdir(parents=True, exist_ok=True)
+    import json
+    (d / "package.json").write_text(json.dumps(sections))
+
+
+class CountingRegistry(FakeRegistry):
+    def __init__(self, table): super().__init__(table); self.calls = []
+    def latest(self, name, eco): self.calls.append(name); return super().latest(name, eco)
+
+
+def test_ignored_packages_skip_the_registry(tmp_path: Path):
+    write_manifest(tmp_path / "co", {"@types/node": "22.0.0", "hono": "4.6.1"})
+    reg = CountingRegistry({("npm", "@types/node"): RegistryInfo("22.0.1", None), ("npm", "hono"): RegistryInfo("4.7.0", None)})
+    out = releases.collect("o/r", tmp_path / "co", reg, FakeGitHub(), State(tmp_path / "db"),
+                           ignored=lambda name: name.startswith("@types/"))
+    assert [f.package for f in out] == ["hono"] and reg.calls == ["hono"]
+
+
+def test_dev_in_every_manifest_marks_the_finding_dev(tmp_path: Path):
+    write_full_manifest(tmp_path / "co", dependencies={"hono": "4.6.1"}, devDependencies={"vitest": "3.2.0", "eslint": "9.0.0"})
+    write_full_manifest(tmp_path / "co", "web", dependencies={"vitest": "3.2.0"})
+    reg = FakeRegistry({("npm", "hono"): RegistryInfo("4.7.0", None), ("npm", "vitest"): RegistryInfo("4.0.0", None),
+                        ("npm", "eslint"): RegistryInfo("9.1.0", None)})
+    out = releases.collect("o/r", tmp_path / "co", reg, FakeGitHub(), State(tmp_path / "db"), collapse_dev=True)
+    assert {f.package: f.dev for f in out} == {"hono": False, "vitest": False, "eslint": True}
+
+
+def test_collapse_dev_off_leaves_dev_false(tmp_path: Path):
+    write_full_manifest(tmp_path / "co", devDependencies={"eslint": "9.0.0"})
+    reg = FakeRegistry({("npm", "eslint"): RegistryInfo("9.1.0", None)})
+    out = releases.collect("o/r", tmp_path / "co", reg, FakeGitHub(), State(tmp_path / "db"), collapse_dev=False)
+    assert [f.dev for f in out] == [False]

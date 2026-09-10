@@ -11,6 +11,15 @@ allowlist = [
 [advisories]
 osv = true
 
+# Optional. Globs on the package name. Ignored packages get no release or landed lines.
+# Advisories are never ignored. Add [ignore."your-user/app-one"] with its own packages list for one repo.
+[ignore]
+packages = ["@types/*"]
+
+# Optional. Dev dependency releases fold into one "Dev:" line and skip the model tiers. Default true.
+[releases]
+collapse_dev = true
+
 # Optional. Without it, only `depwatch digest --dry-run` works and prints the note.
 [vault]
 # Git repo that receives one note per ISO week at <folder>/2026-W37.md. GITHUB_TOKEN must be able to push.

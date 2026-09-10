@@ -1,5 +1,6 @@
+import fnmatch
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Mapping
 
@@ -27,6 +28,13 @@ class Config:
     committer_name: str = "depwatch"
     committer_email: str = "depwatch@localhost"
     osv: bool = True
+    ignore_packages: list[str] = field(default_factory=list)
+    ignore_repos: dict[str, list[str]] = field(default_factory=dict)
+    collapse_dev: bool = True
+
+    def ignored(self, repo: str, name: str) -> bool:
+        globs = self.ignore_packages + self.ignore_repos.get(repo, [])
+        return any(fnmatch.fnmatchcase(name, g) for g in globs)
 
 
 def _require(env: Mapping[str, str], key: str) -> str:
@@ -60,6 +68,8 @@ def load(path: Path, env: Mapping[str, str]) -> Config:
     tier2_provider = tier2.get("provider", "local")
     if tier2_provider not in ("local", "anthropic"):
         raise ConfigError(f"llm.tier2 provider {tier2_provider!r} must be 'local' or 'anthropic'")
+    ignore = raw.get("ignore", {})
+    ignore_repos = {_check_repo(k): list(v.get("packages", [])) for k, v in ignore.items() if isinstance(v, dict)}
     anthropic_api_key = env.get("ANTHROPIC_API_KEY") or None
     if tier2_provider == "anthropic" and not anthropic_api_key:
         raise ConfigError("ANTHROPIC_API_KEY is not set")
@@ -81,4 +91,7 @@ def load(path: Path, env: Mapping[str, str]) -> Config:
         committer_name=vault.get("committer_name", "depwatch"),
         committer_email=vault.get("committer_email", "depwatch@localhost"),
         osv=bool(raw.get("advisories", {}).get("osv", True)),
+        ignore_packages=list(ignore.get("packages", [])),
+        ignore_repos=ignore_repos,
+        collapse_dev=bool(raw.get("releases", {}).get("collapse_dev", True)),
     )

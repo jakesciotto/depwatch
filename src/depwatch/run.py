@@ -1,6 +1,7 @@
 import logging
 from dataclasses import dataclass, replace
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 from typing import Callable
 from zoneinfo import ZoneInfo
@@ -80,10 +81,12 @@ def _collect(s: Services, feeds: tuple[str, ...]) -> Collected:
             path = s.repos.sync(repo)
             head = s.repos.head(path)
             c.checkouts[repo] = path
+            ignored = partial(s.config.ignored, repo)
             if "landed" in feeds:
-                c.findings += landed.collect(repo, path, s.repos, s.state.head(repo), head)
+                c.findings += landed.collect(repo, path, s.repos, s.state.head(repo), head, ignored=ignored)
             if "releases" in feeds:
-                c.findings += releases.collect(repo, path, s.registry, s.github, s.state)
+                c.findings += releases.collect(repo, path, s.registry, s.github, s.state, ignored=ignored,
+                                               collapse_dev=s.config.collapse_dev)
             if "advisories" in feeds:
                 c.findings += advisories.collect(repo, path, s.github, s.osv, s.state)
             c.heads[repo] = head

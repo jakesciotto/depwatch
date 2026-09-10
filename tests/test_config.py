@@ -143,3 +143,28 @@ def test_advisories_osv_defaults_on_and_reads_toml(tmp_path: Path):
     assert config.load(p, ENV).osv is True
     p.write_text(SAMPLE + "\n[advisories]\nosv = false\n")
     assert config.load(p, ENV).osv is False
+
+
+def test_ignore_globs_global_and_per_repo(tmp_path: Path):
+    p = tmp_path / "config.toml"
+    p.write_text(SAMPLE + '\n[ignore]\npackages = ["@types/*"]\n\n[ignore."acme/a"]\npackages = ["react-native"]\n')
+    cfg = config.load(p, ENV)
+    assert cfg.ignored("acme/a", "@types/node") and cfg.ignored("acme/b", "@types/node")
+    assert cfg.ignored("acme/a", "react-native") and not cfg.ignored("acme/b", "react-native")
+    assert not cfg.ignored("acme/a", "react")
+
+
+def test_ignore_repo_key_must_be_owner_slash_name(tmp_path: Path):
+    p = tmp_path / "config.toml"
+    p.write_text(SAMPLE + '\n[ignore."a"]\npackages = ["x"]\n')
+    with pytest.raises(config.ConfigError, match="owner/name"):
+        config.load(p, ENV)
+
+
+def test_no_ignore_section_ignores_nothing_and_collapse_dev_defaults_on(tmp_path: Path):
+    p = tmp_path / "config.toml"
+    p.write_text(SAMPLE)
+    cfg = config.load(p, ENV)
+    assert cfg.ignored("acme/a", "@types/node") is False and cfg.collapse_dev is True
+    p.write_text(SAMPLE + "\n[releases]\ncollapse_dev = false\n")
+    assert config.load(p, ENV).collapse_dev is False

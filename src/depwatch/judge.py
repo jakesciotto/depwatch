@@ -134,6 +134,8 @@ class JudgeReport:
 
 def run(findings: list[Finding], checkout_for: Callable[[str], Path | None], tier1: Tier1, tier2: TierTwo) -> JudgeReport:
     for f in findings:
+        if f.kind == "release" and f.dev:
+            continue
         if f.kind in ("release", "advisory"):
             checkout = checkout_for(f.repo)
             if checkout is not None:
