@@ -11,3 +11,20 @@ importers:
       eslint:
         specifier: ^9.0.0
         version: 9.12.0
+
+packages:
+
+  '@types/react@19.0.1':
+    resolution: {integrity: sha512-a}
+
+  eslint@9.12.0:
+    resolution: {integrity: sha512-b}
+
+  next@16.2.6:
+    resolution: {integrity: sha512-c}
+
+snapshots:
+
+  next@16.2.6(react-dom@19.0.0)(react@19.0.0):
+    dependencies:
+      react: 19.0.0

@@ -7,7 +7,7 @@ allowlist = [
   "your-user/app-two",
 ]
 
-# Optional. OSV.dev advisories for the direct npm and PyPI dependencies, no token needed. Default true.
+# Optional. OSV.dev advisories for every npm and PyPI package the manifests and lockfiles pin, no token needed. Default true.
 [advisories]
 osv = true
 

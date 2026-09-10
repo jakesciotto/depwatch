@@ -64,3 +64,15 @@ def test_collect_merges_osv_alerts_and_keeps_dependabot_on_shared_permalink(tmp_
 def test_collect_without_osv_reads_no_manifests(tmp_path: Path):
     out = advisories.collect("o/r", tmp_path / "missing", FakeGitHub([alert("GHSA-1", "low")]), None, State(tmp_path / "db"))
     assert [f.source_url for f in out] == ["https://github.com/advisories/GHSA-1"]
+
+
+def test_collect_sends_osv_locked_packages_once(tmp_path: Path):
+    checkout = tmp_path / "repo"
+    checkout.mkdir()
+    (checkout / "package.json").write_text(json.dumps({"dependencies": {"hono": "4.6.1"}}))
+    (checkout / "package-lock.json").write_text(json.dumps({"lockfileVersion": 3, "packages": {
+        "": {}, "node_modules/hono": {"version": "4.6.1"}, "node_modules/fast-uri": {"version": "3.1.0", "dev": True}}}))
+    osv = FakeOSV([])
+    advisories.collect("o/r", checkout, FakeGitHub([]), osv, State(tmp_path / "db"))
+    assert osv.deps == [Dependency("hono", "npm", "4.6.1", "prod", "package.json"),
+                        Dependency("fast-uri", "npm", "3.1.0", "dev", "package-lock.json")]

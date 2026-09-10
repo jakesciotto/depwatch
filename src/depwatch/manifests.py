@@ -18,6 +18,7 @@ MANIFEST_GLOBS = (
 _SKIP_DIRS = {"node_modules", ".git", ".venv", "venv", "dist", "build"}
 _PEP508_NAME = re.compile(r"^\s*([A-Za-z0-9][A-Za-z0-9._-]*)")
 _PEP508_SPEC = re.compile(r"[<>=!~]=?.*$")
+_PNPM_KEY = re.compile(r"^/?(?P<name>@?[^@(]+)@(?P<version>[^(]+)")
 
 
 def _walk(root: Path, names: tuple[str, ...]) -> list[Path]:
@@ -174,4 +175,56 @@ def parse(root: Path) -> list[Dependency]:
         out.extend(_requirements(root, p))
     for p in _walk(root, ("Dockerfile", "*.Dockerfile")):
         out.extend(_dockerfile(root, p))
+    return out
+
+
+def _npm_lock_all(root: Path, lock: Path) -> list[Dependency]:
+    out = []
+    for key, meta in (json.loads(lock.read_text()).get("packages") or {}).items():
+        if "node_modules/" not in key or meta.get("link") or not meta.get("version"):
+            continue
+        name = key.rsplit("node_modules/", 1)[-1]
+        out.append(Dependency(name, "npm", meta["version"], "dev" if meta.get("dev") else "prod", _rel(root, lock)))
+    return out
+
+
+def _pnpm_lock_all(root: Path, lock: Path) -> list[Dependency]:
+    data = yaml.safe_load(lock.read_text()) or {}
+    out = []
+    for key in data.get("packages") or {}:
+        m = _PNPM_KEY.match(key)
+        if m:
+            out.append(Dependency(m["name"], "npm", m["version"], "prod", _rel(root, lock)))
+    return out
+
+
+def _project_name(d: Path) -> str | None:
+    pp = d / "pyproject.toml"
+    if not pp.is_file():
+        return None
+    name = tomllib.loads(pp.read_text()).get("project", {}).get("name")
+    return _pypi_name(name) if name else None
+
+
+def _uv_lock_all(root: Path, lock: Path) -> list[Dependency]:
+    project = _project_name(lock.parent)
+    out = []
+    for pkg in tomllib.loads(lock.read_text()).get("package", []):
+        source = pkg.get("source") or {}
+        name = _pypi_name(pkg["name"])
+        if "version" not in pkg or name == project or "editable" in source or "virtual" in source:
+            continue
+        out.append(Dependency(name, "pypi", pkg["version"], "prod", _rel(root, lock)))
+    return out
+
+
+def locked(root: Path) -> list[Dependency]:
+    """Every package a lockfile pins, transitives included. The lockfile is the manifest_path."""
+    out: list[Dependency] = []
+    for p in _walk(root, ("package-lock.json",)):
+        out.extend(_npm_lock_all(root, p))
+    for p in _walk(root, ("pnpm-lock.yaml",)):
+        out.extend(_pnpm_lock_all(root, p))
+    for p in _walk(root, ("uv.lock",)):
+        out.extend(_uv_lock_all(root, p))
     return out

@@ -64,3 +64,28 @@ def test_node_modules_is_skipped(tmp_path: Path):
     (tmp_path / "node_modules/x").mkdir(parents=True)
     (tmp_path / "node_modules/x/package.json").write_text('{"dependencies": {"a": "1.0.0"}}')
     assert manifests.parse(tmp_path) == []
+
+
+def test_locked_npm_lock_lists_every_installed_package(fixtures: Path):
+    deps = manifests.locked(fixtures / "manifests/npm-workspace")
+    assert sorted((d.name, d.version, d.kind, d.manifest_path) for d in deps) == [
+        ("hono", "4.5.9", "prod", "package-lock.json"), ("hono", "4.6.1", "prod", "package-lock.json"),
+        ("react", "19.0.0", "prod", "package-lock.json"), ("typescript", "5.6.3", "dev", "package-lock.json"),
+        ("vitest", "3.2.4", "dev", "package-lock.json")]
+
+
+def test_locked_pnpm_lock_parses_package_keys(fixtures: Path):
+    deps = manifests.locked(fixtures / "manifests/pnpm")
+    assert sorted((d.name, d.version) for d in deps) == [("@types/react", "19.0.1"), ("eslint", "9.12.0"), ("next", "16.2.6")]
+    assert {(d.ecosystem, d.manifest_path) for d in deps} == {("npm", "pnpm-lock.yaml")}
+
+
+def test_locked_uv_lock_excludes_the_project_and_editable_members(fixtures: Path):
+    deps = manifests.locked(fixtures / "manifests/uv-locked")
+    assert sorted((d.name, d.version, d.ecosystem, d.manifest_path) for d in deps) == [
+        ("httpx", "0.28.1", "pypi", "uv.lock"), ("pydantic", "2.13.5", "pypi", "uv.lock"), ("pytest", "9.1.1", "pypi", "uv.lock")]
+
+
+def test_locked_without_lockfiles_is_empty(tmp_path: Path):
+    (tmp_path / "package.json").write_text('{"dependencies": {"a": "1.0.0"}}')
+    assert manifests.locked(tmp_path) == []
