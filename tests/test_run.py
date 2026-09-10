@@ -6,7 +6,9 @@ import httpx
 import pytest
 
 from depwatch import run
-from depwatch.config import Config
+from dataclasses import replace
+
+from depwatch.config import Config, ConfigError
 from depwatch.github import Alert
 from depwatch.judge import Tier1, Tier2
 from depwatch.registry import RegistryInfo
@@ -174,3 +176,11 @@ def test_feed_failure_does_not_move_head(services, monkeypatch):
     text = run.digest(s, dry_run=False)
     assert "fetch failed" in text
     assert s.state.head("duels") is None
+
+
+def test_publish_without_vault_is_a_config_error(services):
+    s, _ = services
+    s.config = replace(s.config, vault_repo="")
+    with pytest.raises(ConfigError, match="vault"):
+        run.digest(s, dry_run=False)
+    assert "# Dependencies" in run.digest(s, dry_run=True)

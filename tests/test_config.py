@@ -119,3 +119,19 @@ def test_committer_from_toml(tmp_path: Path):
     cfg = config.load(p, ENV)
     assert cfg.committer_name == "bot"
     assert cfg.committer_email == "bot@example.com"
+
+
+def test_minimal_config_loads_without_vault_or_llm(tmp_path: Path):
+    p = tmp_path / "config.toml"
+    p.write_text('[repos]\nallowlist = ["acme/a"]\n')
+    cfg = config.load(p, {"GITHUB_TOKEN": "gh"})
+    assert cfg.allowlist == ["acme/a"]
+    assert cfg.vault_repo == "" and cfg.vault_folder == "dependencies"
+    assert cfg.tier1_base_url == "" and cfg.tier2_base_url == ""
+
+
+def test_empty_allowlist_raises(tmp_path: Path):
+    p = tmp_path / "config.toml"
+    p.write_text("[repos]\nallowlist = []\n")
+    with pytest.raises(config.ConfigError, match="allowlist"):
+        config.load(p, ENV)

@@ -106,3 +106,9 @@ def test_advisory_section_reports_repo_errors():
     text = note.render_advisory_section(date(2026, 9, 16), [], OK, {"acme/recall": "git fetch failed"})
     assert "- fetch failed: recall: git fetch failed" in text
     assert "No new advisories." not in text
+
+
+def test_fallback_summary_skips_release_note_headers():
+    f = F(raw="### 12.3.0\n\nDropped Python 3.9.\nMore text.")
+    text = note.line(f, JudgeReport(tier1_available=False, tier2_available=False, tier2_capped=0))
+    assert "Dropped Python 3.9." in text and "###" not in text

@@ -34,7 +34,7 @@ def _header(f: Finding) -> str:
 class Tier1:
     def __init__(self, client: httpx.Client, base_url: str, model: str):
         self.client, self.base_url, self.model = client, base_url.rstrip("/"), model
-        self.available = True
+        self.available = bool(self.base_url)
 
     def annotate(self, f: Finding) -> None:
         if not self.available:
@@ -88,7 +88,7 @@ class LocalTier2:
     def __init__(self, client: httpx.Client, base_url: str, model: str, max_calls: int):
         self.client, self.base_url, self.model, self.max_calls = client, base_url.rstrip("/"), model, max_calls
         self.calls = 0
-        self.available = True
+        self.available = bool(self.base_url)
 
     def read(self, f: Finding) -> None:
         if not self.available:

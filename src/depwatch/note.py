@@ -30,7 +30,9 @@ def _summary(f: Finding, report: JudgeReport) -> str:
     if f.summary:
         return f" {_flatten(f.summary)}"
     if not report.tier1_available and f.raw:
-        return f" {_flatten(f.raw.splitlines()[0])}"
+        for raw_line in f.raw.splitlines():
+            if raw_line.strip() and not raw_line.lstrip().startswith("#"):
+                return f" {_flatten(raw_line)}"
     return ""
 
 
@@ -93,7 +95,7 @@ def _body(findings: list[Finding], report: JudgeReport, repo_errors: dict[str, s
         return "No changes this week.\n"
     parts: list[str] = []
     if not report.tier1_available:
-        parts.append("Note: summaries unavailable, the local model did not answer.\n")
+        parts.append("Note: summaries unavailable, no tier one model configured or answering.\n")
     advisories = [f for f in findings if f.kind == "advisory"]
     if advisories:
         parts.append("## Advisories\n\n" + "\n".join(line(f, report) for f in advisories) + "\n")

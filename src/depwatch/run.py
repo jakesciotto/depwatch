@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 import httpx
 
 from . import advisories, judge, landed, note, releases
-from .config import Config
+from .config import Config, ConfigError
 from .github import GitHub
 from .models import Finding
 from .notify import Notifier
@@ -119,7 +119,13 @@ def _finish(s: Services, c: Collected, kind: str, rel_path: str, build, message:
     return published[-1] if published else text
 
 
+def _require_vault(s: Services, dry_run: bool) -> None:
+    if not dry_run and not s.config.vault_repo:
+        raise ConfigError("no [vault] repo configured, set one or use --dry-run")
+
+
 def digest(s: Services, dry_run: bool) -> str:
+    _require_vault(s, dry_run)
     now = s.now()
     week = note.week_id(now.date())
     rel_path = note.note_path(s.config.vault_folder, now.date())
@@ -138,6 +144,7 @@ def digest(s: Services, dry_run: bool) -> str:
 
 
 def advisory(s: Services, dry_run: bool) -> str:
+    _require_vault(s, dry_run)
     now = s.now()
     week = note.week_id(now.date())
     rel_path = note.note_path(s.config.vault_folder, now.date())

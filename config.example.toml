@@ -1,18 +1,25 @@
-# Copy to config.toml and edit. Secrets go in .env, see .env.example.
+# Copy to config.toml. Only [repos] is required. Secrets go in the environment or .env.
 
+[repos]
+# owner/name. GITHUB_TOKEN needs read access, plus Dependabot alerts read for advisories.
+allowlist = [
+  "your-user/app-one",
+  "your-user/app-two",
+]
+
+# Optional. Without it, only `depwatch digest --dry-run` works and prints the note.
 [vault]
-# Git repo that receives the digest notes. The GITHUB_TOKEN must be able to push to it.
+# Git repo that receives one note per ISO week at <folder>/2026-W37.md. GITHUB_TOKEN must be able to push.
 repo = "your-user/notes"
-# Folder inside that repo. One note per ISO week: <folder>/2026-W37.md
-folder = "resources/dependencies"
-# Scheduler and note timestamps. Defaults to UTC.
+folder = "dependencies"
 timezone = "UTC"
-# Identity on the digest commits. Both optional.
 committer_name = "depwatch"
 committer_email = "depwatch@localhost"
 
+# Optional. Without it there are no summaries or breakage reads, and findings that would
+# have needed a read are marked actionable.
 [llm.tier1]
-# Any OpenAI-compatible chat endpoint. Summarises every non-patch finding, so keep it cheap and local.
+# Any OpenAI-compatible chat endpoint. Summarises every finding, so keep it cheap and local.
 base_url = "http://localhost:8080/v1"
 model = "chat"
 
@@ -21,12 +28,4 @@ model = "chat"
 provider = "local"
 base_url = "http://localhost:8080/v1"
 model = "deep"
-# Hard cap on breakage reads per run. Findings past the cap are marked actionable without a read.
 max_calls_per_run = 10
-
-[repos]
-# owner/name. The GITHUB_TOKEN needs read access, plus security_events for Dependabot alerts.
-allowlist = [
-  "your-user/app-one",
-  "your-user/app-two",
-]

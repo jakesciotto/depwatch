@@ -208,3 +208,11 @@ def test_run_applies_cap_with_local_tier2(tmp_path: Path):
     assert [f.breakage for f in fs] == ["b", "not analysed: run cap reached"]
     assert len(calls) == 1
     assert report.tier2_capped == 1
+
+
+def test_tiers_without_base_url_are_off():
+    t1 = judge.Tier1(httpx.Client(), "", "")
+    f = finding()
+    t1.annotate(f)
+    assert not t1.available and f.summary is None
+    assert not judge.LocalTier2(httpx.Client(), "", "", 10).available

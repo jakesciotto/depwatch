@@ -46,12 +46,16 @@ def load(path: Path, env: Mapping[str, str]) -> Config:
     if not path.is_file():
         raise ConfigError(f"{path} not found, copy config.example.toml to {path} and edit it")
     raw = tomllib.loads(path.read_text())
-    vault = raw["vault"]
-    tier1 = raw["llm"]["tier1"]
-    tier2 = raw["llm"]["tier2"]
-    allowlist = [_check_repo(r) for r in raw["repos"]["allowlist"]]
-    _check_repo(vault["repo"])
-    tier1_base_url = tier1["base_url"].rstrip("/")
+    vault = raw.get("vault", {})
+    llm = raw.get("llm", {})
+    tier1, tier2 = llm.get("tier1", {}), llm.get("tier2", {})
+    allowlist = [_check_repo(r) for r in raw.get("repos", {}).get("allowlist", [])]
+    if not allowlist:
+        raise ConfigError("repos.allowlist is empty")
+    vault_repo = vault.get("repo", "")
+    if vault_repo:
+        _check_repo(vault_repo)
+    tier1_base_url = tier1.get("base_url", "").rstrip("/")
     tier2_provider = tier2.get("provider", "local")
     if tier2_provider not in ("local", "anthropic"):
         raise ConfigError(f"llm.tier2 provider {tier2_provider!r} must be 'local' or 'anthropic'")
@@ -59,11 +63,11 @@ def load(path: Path, env: Mapping[str, str]) -> Config:
     if tier2_provider == "anthropic" and not anthropic_api_key:
         raise ConfigError("ANTHROPIC_API_KEY is not set")
     return Config(
-        vault_repo=vault["repo"],
-        vault_folder=vault["folder"].strip("/"),
+        vault_repo=vault_repo,
+        vault_folder=vault.get("folder", "dependencies").strip("/"),
         timezone=vault.get("timezone", "UTC"),
         tier1_base_url=tier1_base_url,
-        tier1_model=tier1["model"],
+        tier1_model=tier1.get("model", ""),
         tier2_model=tier2.get("model", "claude-sonnet-5"),
         tier2_max_calls=int(tier2.get("max_calls_per_run", 10)),
         allowlist=allowlist,
