@@ -4,8 +4,8 @@ WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
+COPY README.md LICENSE ./
 COPY src ./src
-COPY config.toml ./
 RUN uv sync --frozen --no-dev
 RUN groupadd -g 1000 depwatch && useradd -m -u 1000 -g 1000 depwatch \
     && chown -R depwatch:depwatch /app \

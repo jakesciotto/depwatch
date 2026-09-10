@@ -57,7 +57,8 @@ def build_services(cfg: Config) -> Services:
         config=cfg, state=State(cfg.data_dir / "depwatch.db"), repos=repos, registry=Registry(http), github=gh,
         tier1=judge.Tier1(http, cfg.tier1_base_url, cfg.tier1_model),
         tier2=_build_tier2(cfg, http),
-        vault=Vault(repos, cfg.vault_repo, cfg.vault_folder), notifier=Notifier(http, cfg.ntfy_topic),
+        vault=Vault(repos, cfg.vault_repo, cfg.vault_folder, cfg.committer_name, cfg.committer_email),
+        notifier=Notifier(http, cfg.ntfy_topic),
         now=lambda: datetime.now(tz), http=http,
     )
 

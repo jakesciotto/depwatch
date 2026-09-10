@@ -24,6 +24,8 @@ class Config:
     data_dir: Path
     tier2_provider: str = "local"
     tier2_base_url: str = ""
+    committer_name: str = "depwatch"
+    committer_email: str = "depwatch@localhost"
 
 
 def _require(env: Mapping[str, str], key: str) -> str:
@@ -41,6 +43,8 @@ def _check_repo(name: str) -> str:
 
 
 def load(path: Path, env: Mapping[str, str]) -> Config:
+    if not path.is_file():
+        raise ConfigError(f"{path} not found, copy config.example.toml to {path} and edit it")
     raw = tomllib.loads(path.read_text())
     vault = raw["vault"]
     tier1 = raw["llm"]["tier1"]
@@ -57,7 +61,7 @@ def load(path: Path, env: Mapping[str, str]) -> Config:
     return Config(
         vault_repo=vault["repo"],
         vault_folder=vault["folder"].strip("/"),
-        timezone=vault.get("timezone", "America/New_York"),
+        timezone=vault.get("timezone", "UTC"),
         tier1_base_url=tier1_base_url,
         tier1_model=tier1["model"],
         tier2_model=tier2.get("model", "claude-sonnet-5"),
@@ -69,4 +73,6 @@ def load(path: Path, env: Mapping[str, str]) -> Config:
         data_dir=Path(env.get("DEPWATCH_DATA_DIR", "data")),
         tier2_provider=tier2_provider,
         tier2_base_url=tier2.get("base_url", tier1_base_url).rstrip("/"),
+        committer_name=vault.get("committer_name", "depwatch"),
+        committer_email=vault.get("committer_email", "depwatch@localhost"),
     )

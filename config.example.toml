@@ -1,0 +1,32 @@
+# Copy to config.toml and edit. Secrets go in .env, see .env.example.
+
+[vault]
+# Git repo that receives the digest notes. The GITHUB_TOKEN must be able to push to it.
+repo = "your-user/notes"
+# Folder inside that repo. One note per ISO week: <folder>/2026-W37.md
+folder = "resources/dependencies"
+# Scheduler and note timestamps. Defaults to UTC.
+timezone = "UTC"
+# Identity on the digest commits. Both optional.
+committer_name = "depwatch"
+committer_email = "depwatch@localhost"
+
+[llm.tier1]
+# Any OpenAI-compatible chat endpoint. Summarises every non-patch finding, so keep it cheap and local.
+base_url = "http://localhost:8080/v1"
+model = "chat"
+
+[llm.tier2]
+# "local" reuses an OpenAI-compatible endpoint. "anthropic" uses the Claude API and needs ANTHROPIC_API_KEY.
+provider = "local"
+base_url = "http://localhost:8080/v1"
+model = "deep"
+# Hard cap on breakage reads per run. Findings past the cap are marked actionable without a read.
+max_calls_per_run = 10
+
+[repos]
+# owner/name. The GITHUB_TOKEN needs read access, plus security_events for Dependabot alerts.
+allowlist = [
+  "your-user/app-one",
+  "your-user/app-two",
+]

@@ -5,3 +5,5 @@
 data
 tests
 .env
+config.toml
+config.example.toml

@@ -83,3 +83,10 @@ def test_guarded_job_notifies_when_services_fail(monkeypatch):
     monkeypatch.setattr(cli.Notifier, "failure", lambda self, text: msgs.append(text))
     cli._guarded(run.digest, "config.toml")()
     assert msgs and "RuntimeError" in msgs[0] and "no config" in msgs[0]
+
+
+def test_main_reports_missing_config(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("GITHUB_TOKEN", "t")
+    code = cli.main(["digest", "--config", str(tmp_path / "missing.toml")])
+    assert code == 2
+    assert "not found" in capsys.readouterr().err

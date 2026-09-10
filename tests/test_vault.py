@@ -75,3 +75,11 @@ def test_path_outside_folder_is_refused(tmp_path: Path, git_repo: Path, bare_rem
     vault, _ = make(tmp_path, bare_remote)
     with pytest.raises(VaultError, match="outside"):
         vault.publish("areas/work/x.md", lambda e: "a\n", "one")
+
+
+def test_publish_uses_configured_committer(tmp_path: Path, git_repo: Path, bare_remote: Path):
+    repos = Repos(tmp_path / "data", {}, remote_base=str(tmp_path) + "/")
+    vault = Vault(repos, "remote", "resources/dependencies", "bot", "bot@example.com")
+    vault.publish("resources/dependencies/w.md", lambda e: "a\n", "one")
+    git("pull", "-q", cwd=git_repo)
+    assert git("log", "-1", "--format=%an <%ae>", cwd=git_repo) == "bot <bot@example.com>"

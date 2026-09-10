@@ -57,6 +57,14 @@ def main(argv: list[str] | None = None) -> int:
     sp = sub.add_parser("serve")
     sp.add_argument("--config", default="config.toml")
     args = p.parse_args(argv)
+    try:
+        return _dispatch(args)
+    except config.ConfigError as e:
+        sys.stderr.write(f"depwatch: {e}\n")
+        return 2
+
+
+def _dispatch(args: argparse.Namespace) -> int:
     if args.cmd == "digest":
         sys.stdout.write(run.digest(_services(args.config), dry_run=args.dry_run))
         return 0

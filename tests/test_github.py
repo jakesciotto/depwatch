@@ -54,8 +54,8 @@ def test_open_alerts(fixtures: Path, tmp_path: Path):
     def handler(req):
         seen.append(json.loads(req.content)["variables"])
         return httpx.Response(200, json=body)
-    alerts = make(handler, tmp_path).open_alerts("jakesciotto/easton-duels")
-    assert seen == [{"owner": "jakesciotto", "name": "easton-duels", "after": None}]
+    alerts = make(handler, tmp_path).open_alerts("acme/easton-duels")
+    assert seen == [{"owner": "acme", "name": "easton-duels", "after": None}]
     assert alerts[0] == Alert(
         ghsa_id="GHSA-aaaa-bbbb-cccc", severity="high", package="hono", ecosystem="npm",
         vulnerable_range="< 4.6.2", first_patched="4.6.2", summary="Path traversal", description="Long text.",

@@ -5,6 +5,7 @@ services:
     user: "1000:1000"
     volumes:
       - ./data:/data
+      - ./config.toml:/app/config.toml:ro
     restart: unless-stopped
     logging:
       driver: json-file

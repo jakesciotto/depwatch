@@ -1,7 +1,11 @@
 [project]
 name = "depwatch"
 version = "0.1.0"
-description = "Watches GitHub repos for dependency changes and writes a digest into an Obsidian vault"
+description = "Watches GitHub repos for dependency changes and writes a weekly digest into a markdown vault"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Jake Sciotto" }]
 requires-python = ">=3.12"
 dependencies = [
   "httpx>=0.28,<1",
@@ -10,6 +14,9 @@ dependencies = [
   "pyyaml>=6,<7",
   "apscheduler>=3.11,<4",
 ]
+
+[project.urls]
+Repository = "https://github.com/jakesciotto/depwatch"
 
 [project.scripts]
 depwatch = "depwatch.cli:main"
