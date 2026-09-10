@@ -135,3 +135,11 @@ def test_empty_allowlist_raises(tmp_path: Path):
     p.write_text("[repos]\nallowlist = []\n")
     with pytest.raises(config.ConfigError, match="allowlist"):
         config.load(p, ENV)
+
+
+def test_advisories_osv_defaults_on_and_reads_toml(tmp_path: Path):
+    p = tmp_path / "config.toml"
+    p.write_text(SAMPLE)
+    assert config.load(p, ENV).osv is True
+    p.write_text(SAMPLE + "\n[advisories]\nosv = false\n")
+    assert config.load(p, ENV).osv is False

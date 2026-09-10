@@ -1,13 +1,19 @@
+from pathlib import Path
+
+from . import manifests
 from .models import Finding
 
 _ORDER = {"critical": 0, "high": 1, "moderate": 2, "low": 3}
 RAW_CAP = 4000
 
 
-def collect(repo: str, github, state) -> list[Finding]:
+def collect(repo: str, checkout: Path, github, osv, state) -> list[Finding]:
+    alerts = list(github.open_alerts(repo))
+    if osv is not None:
+        alerts += osv.alerts(manifests.parse(checkout))
     out: list[Finding] = []
     seen_permalinks: set[str] = set()
-    for a in github.open_alerts(repo):
+    for a in alerts:
         if a.permalink in seen_permalinks:
             continue
         seen_permalinks.add(a.permalink)

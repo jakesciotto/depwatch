@@ -1,7 +1,7 @@
 # depwatch
 
 Weekly dependency digest for your GitHub repos, as one markdown note.
-Upstream releases, dependency bumps that landed, and Dependabot alerts.
+Upstream releases, dependency bumps that landed, and advisories from Dependabot and OSV.dev.
 Lines that need action come back as checkboxes.
 
 ## Install

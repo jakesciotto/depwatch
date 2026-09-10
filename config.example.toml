@@ -7,6 +7,10 @@ allowlist = [
   "your-user/app-two",
 ]
 
+# Optional. OSV.dev advisories for the direct npm and PyPI dependencies, no token needed. Default true.
+[advisories]
+osv = true
+
 # Optional. Without it, only `depwatch digest --dry-run` works and prints the note.
 [vault]
 # Git repo that receives one note per ISO week at <folder>/2026-W37.md. GITHUB_TOKEN must be able to push.

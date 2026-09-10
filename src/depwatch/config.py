@@ -26,6 +26,7 @@ class Config:
     tier2_base_url: str = ""
     committer_name: str = "depwatch"
     committer_email: str = "depwatch@localhost"
+    osv: bool = True
 
 
 def _require(env: Mapping[str, str], key: str) -> str:
@@ -79,4 +80,5 @@ def load(path: Path, env: Mapping[str, str]) -> Config:
         tier2_base_url=tier2.get("base_url", tier1_base_url).rstrip("/"),
         committer_name=vault.get("committer_name", "depwatch"),
         committer_email=vault.get("committer_email", "depwatch@localhost"),
+        osv=bool(raw.get("advisories", {}).get("osv", True)),
     )

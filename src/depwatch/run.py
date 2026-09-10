@@ -12,6 +12,7 @@ from .config import Config, ConfigError
 from .github import GitHub
 from .models import Finding
 from .notify import Notifier
+from .osv import OSV
 from .registry import Registry
 from .repos import RepoError, Repos
 from .state import State
@@ -34,6 +35,7 @@ class Services:
     notifier: Notifier
     now: Callable[[], datetime]
     http: httpx.Client | None = None
+    osv: OSV | None = None
 
     def close(self) -> None:
         self.state.close()
@@ -59,7 +61,7 @@ def build_services(cfg: Config) -> Services:
         tier2=_build_tier2(cfg, http),
         vault=Vault(repos, cfg.vault_repo, cfg.vault_folder, cfg.committer_name, cfg.committer_email),
         notifier=Notifier(http, cfg.ntfy_topic),
-        now=lambda: datetime.now(tz), http=http,
+        now=lambda: datetime.now(tz), http=http, osv=OSV(http) if cfg.osv else None,
     )
 
 
@@ -83,7 +85,7 @@ def _collect(s: Services, feeds: tuple[str, ...]) -> Collected:
             if "releases" in feeds:
                 c.findings += releases.collect(repo, path, s.registry, s.github, s.state)
             if "advisories" in feeds:
-                c.findings += advisories.collect(repo, s.github, s.state)
+                c.findings += advisories.collect(repo, path, s.github, s.osv, s.state)
             c.heads[repo] = head
         except Exception as e:
             log.warning("repo %s: %s", repo, e)

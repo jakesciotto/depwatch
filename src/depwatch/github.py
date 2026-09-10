@@ -1,10 +1,12 @@
 import stat
-from dataclasses import dataclass
 from pathlib import Path
 
 import httpx
 
+from .models import Alert
 from .versions import newer, parse
+
+__all__ = ["Alert", "GitHub"]
 
 API = "https://api.github.com"
 NOTES_CAP = 4000
@@ -37,21 +39,6 @@ case "$1" in
   *) echo "$GITHUB_TOKEN" ;;
 esac
 """
-
-
-@dataclass(frozen=True)
-class Alert:
-    ghsa_id: str
-    severity: str
-    package: str
-    ecosystem: str
-    vulnerable_range: str
-    first_patched: str | None
-    summary: str
-    description: str
-    permalink: str
-    manifest_path: str
-    created_at: str
 
 
 class GitHub:

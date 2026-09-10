@@ -11,6 +11,7 @@ from dataclasses import replace
 from depwatch.config import Config, ConfigError
 from depwatch.github import Alert
 from depwatch.judge import Tier1, Tier2
+from depwatch.osv import OSV
 from depwatch.registry import RegistryInfo
 from depwatch.repos import Repos
 from depwatch.state import State
@@ -32,6 +33,11 @@ class FakeGitHub:
     def open_alerts(self, repo):
         if repo in self.fail_for: raise RuntimeError("GraphQL error")
         return self.alerts.get(repo, [])
+
+
+class FakeOSV:
+    def __init__(self): self.found, self.deps = [], None
+    def alerts(self, deps): self.deps = deps; return self.found
 
 
 class Notes:
@@ -70,7 +76,7 @@ def services(tmp_path: Path):
                                              "https://github.com/advisories/GHSA-1", "package.json", "2026-09-01T00:00:00Z")]})
     s = run.Services(config=cfg, state=State(cfg.data_dir / "depwatch.db"), repos=repos, registry=reg, github=gh,
                      tier1=t1, tier2=t2, vault=Vault(repos, "obsidian", "resources/dependencies"), notifier=Notes(),
-                     now=lambda: datetime(2026, 9, 14, 7, 0, tzinfo=TZ))
+                     now=lambda: datetime(2026, 9, 14, 7, 0, tzinfo=TZ), osv=FakeOSV())
     return s, vault_src
 
 
@@ -184,3 +190,22 @@ def test_publish_without_vault_is_a_config_error(services):
     with pytest.raises(ConfigError, match="vault"):
         run.digest(s, dry_run=False)
     assert "# Dependencies" in run.digest(s, dry_run=True)
+
+
+def test_digest_includes_osv_advisories_for_parsed_dependencies(services):
+    s, _ = services
+    s.osv.found = [Alert("GHSA-7", "high", "hono", "npm", "4.6.1", "4.6.5", "S", "D",
+                         "https://github.com/advisories/GHSA-7", "package.json", "2026-09-01T00:00:00Z")]
+    text = run.digest(s, dry_run=True)
+    assert "GHSA-7" in text and "hono 4.6.1" in text
+    assert [(d.name, d.version) for d in s.osv.deps] == [("hono", "4.6.1"), ("zod", "3.23.0")]
+
+
+def test_build_services_follows_osv_flag(services):
+    s, _ = services
+    on = run.build_services(s.config)
+    off = run.build_services(replace(s.config, osv=False))
+    try:
+        assert isinstance(on.osv, OSV) and off.osv is None
+    finally:
+        on.close(); off.close()
