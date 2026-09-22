@@ -117,8 +117,8 @@ def _body(findings: list[Finding], report: JudgeReport, repo_errors: dict[str, s
             if patches:
                 lines.append(f"- Patches: {', '.join(f.package for f in patches)} ({len(patches)}).")
             if dev:
-                parts = [f.package if f.severity == "patch" else f"{f.package} ({f.severity})" for f in dev]
-                lines.append(f"- Dev: {', '.join(parts)} ({len(dev)}).")
+                names = [f.package if f.severity == "patch" else f"{f.package} ({f.severity})" for f in dev]
+                lines.append(f"- Dev: {', '.join(names)} ({len(dev)}).")
             section.append("### Upstream\n" + "\n".join(lines) + "\n")
         parts.append("\n".join(section))
     return "\n".join(parts)

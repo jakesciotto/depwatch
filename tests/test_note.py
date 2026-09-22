@@ -123,3 +123,12 @@ def test_dev_releases_collapse_into_one_line_after_patches():
     text = note.render_digest("2026-W37", GEN, 1, fs, OK, 0, {})
     assert "- Patches: typescript (1).\n- Dev: vitest (major), eslint (minor), @types/node (3).\n" in text
     assert "vitest 3.2.0 -> 4.0.0" not in text and "[hono 4.6.1 -> 4.7.0]" in text
+
+
+def test_dev_collapse_keeps_the_sections_of_earlier_repos():
+    fs = [F(repo="acme/easton-duels", package="hono", current="4.6.1", target="4.7.0", severity="minor"),
+          F(repo="acme/portfolio", package="prettier", current="3.9.6", target="3.9.8", severity="patch", dev=True)]
+    text = note.render_digest("2026-W39", GEN, 2, fs, OK, 0, {})
+    assert "## easton-duels\n" in text and "[hono 4.6.1 -> 4.7.0]" in text
+    assert "## portfolio\n" in text and "- Dev: prettier (1).\n" in text
+    assert "\n\nprettier\n" not in text
