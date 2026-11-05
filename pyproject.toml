@@ -22,7 +22,7 @@ Repository = "https://github.com/jakesciotto/depwatch"
 depwatch = "depwatch.cli:main"
 
 [dependency-groups]
-dev = ["pytest>=9,<10"]
+dev = ["pytest>=9.2.0,<10"]
 
 [build-system]
 requires = ["hatchling"]
