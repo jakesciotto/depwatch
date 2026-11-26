@@ -11,7 +11,7 @@ dependencies = [
   "httpx>=0.28,<1",
   "anthropic>=1.4,<2",
   "pydantic>=2,<3",
-  "pyyaml>=6,<7",
+  "pyyaml>=6.0.4,<7",
   "apscheduler>=3.11,<4",
 ]
 
